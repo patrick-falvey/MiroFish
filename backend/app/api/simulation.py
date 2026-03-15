@@ -48,6 +48,18 @@ async def get_run_status(simulation_id: str):
         }
     )
 
+@router.get("/history", response_model=V1Response)
+async def get_history(limit: int = 20):
+    """
+    Returns a list of recent simulations.
+    """
+    return V1Response(
+        success=True,
+        data={
+            "simulations": []
+        }
+    )
+
 # --- V2 Financial API Endpoints ---
 # We will implement these fully later, returning 404 for now to match the test stubs
 v2_router = APIRouter(prefix="/api/v2/simulation", tags=["Simulation V2"])
