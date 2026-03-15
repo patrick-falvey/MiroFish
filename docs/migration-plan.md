@@ -31,7 +31,7 @@ Migrate from a single-tenant, social-media-focused prototype (Flask/OASIS) to a 
 ### Phase 2: The Real-Time SaaS Pipeline (Medium-term)
 *Goal: Move from synchronous local scripts to async distributed workers suitable for web applications.*
 - [x] **TDD: Test Message Broadcaster:** Write tests ensuring ABIDES `ITCH` event logs are formatted correctly to a mock Redis Pub/Sub channel.
-- [ ] **TDD: Test WebSocket Fanout:** Assert that mock price updates injected into the server are received accurately by the WebSocket client.
+- [x] **TDD: Test WebSocket Fanout:** Assert that mock price updates injected into the server are received accurately by the WebSocket client.
 - [ ] **Implementation:**
     - Isolate the ABIDES simulation loop into a dedicated background worker (e.g., AWS ECS/SQS).
     - Migrate backend from **Flask to FastAPI** to support concurrent LLM IO and native WebSockets.
