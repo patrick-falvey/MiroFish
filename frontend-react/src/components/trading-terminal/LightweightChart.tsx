@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { createChart, IChartApi, ISeriesApi } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, CandlestickSeries, CandlestickData, Time } from 'lightweight-charts';
 import type { MarketDataTick } from '@/api/types';
 
 interface LightweightChartProps {
@@ -30,8 +30,8 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({ data, contai
     });
     chartRef.current = chart;
 
-    // Create the Candlestick series
-    const candlestickSeries = chart.addCandlestickSeries({
+    // Create the Candlestick series using the v5 addSeries API
+    const candlestickSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#26a69a',
       downColor: '#ef5350',
       borderVisible: false,
@@ -51,12 +51,18 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({ data, contai
     if (!seriesRef.current || data.length === 0) return;
 
     // Map our MarketDataTick to LightweightCharts CandlestickData
-    // Note: LightweightCharts requires time to be in standard unix timestamp (seconds) or YYYY-MM-DD format
-    const formattedData = data.map((tick) => {
-      // Very naive mapping for now - assumes we have ohlc, otherwise defaults to flat price
+    const formattedData: CandlestickData[] = data.map((tick) => {
       const price = tick.price;
+      const dateObj = new Date(tick.timestamp);
+      let unixTime = Math.floor(dateObj.getTime() / 1000);
+      
+      // Fallback if timestamp is invalid
+      if (isNaN(unixTime)) {
+        unixTime = Math.floor(Date.now() / 1000);
+      }
+
       return {
-        time: Math.floor(new Date(tick.timestamp).getTime() / 1000) as any, // Cast to any to bypass strict type checking for the exact time shape right now
+        time: unixTime as Time,
         open: tick.open ?? price,
         high: tick.high ?? price,
         low: tick.low ?? price,
@@ -64,11 +70,13 @@ export const LightweightChart: React.FC<LightweightChartProps> = ({ data, contai
       };
     });
 
-    // Ensure data is sorted by time ascending and has unique times
+    // Filter out invalid entries and handle unique times
     const uniqueData = Array.from(new Map(formattedData.map(item => [item.time, item])).values());
-    uniqueData.sort((a, b) => a.time - b.time);
+    uniqueData.sort((a, b) => (a.time as number) - (b.time as number));
 
-    seriesRef.current.setData(uniqueData);
+    if (uniqueData.length > 0) {
+      seriesRef.current.setData(uniqueData);
+    }
   }, [data]);
 
   // Handle Resize

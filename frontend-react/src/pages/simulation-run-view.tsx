@@ -139,6 +139,7 @@ export function SimulationRunView() {
             simulationId={simulationId || ''}
             maxRounds={maxRounds}
             minutesPerRound={minutesPerRound}
+            graphData={graphData}
             systemLogs={systemLogs}
             onGoBack={() => navigate(`/simulation/${simulationId}`)}
             onAddLog={addLog}

@@ -1,3 +1,8 @@
+import sys
+import gymnasium
+# ALIAS HACK: abides-gym hardcodes "import gym"
+sys.modules['gym'] = gymnasium
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,7 +18,8 @@ def create_fastapi_app() -> FastAPI:
         version="2.0.0"
     )
 
-    # Add CORS middleware to match Flask setup
+    # Add CORS middleware
+    # Note: For production, specify exact origins
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],

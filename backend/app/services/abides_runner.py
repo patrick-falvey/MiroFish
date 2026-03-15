@@ -2,11 +2,7 @@ import asyncio
 import logging
 from typing import Dict, Any, List
 
-# Setup Gymnasium with alias for abides-gym
-import sys
 import gymnasium as gym
-if 'gym' not in sys.modules or sys.modules['gym'] != gym:
-    sys.modules['gym'] = gym
 import abides_gym
 
 logger = logging.getLogger(__name__)
@@ -38,6 +34,7 @@ class AbidesRunner:
         env_config.update(config.get("env_config", {}))
         
         try:
+            # The gym here is gymnasium due to the shim in main.py
             self.env = gym.make("markets-execution-v0", **env_config)
         except Exception as e:
             logger.error(f"Failed to initialize ABIDES-Gym: {str(e)}")
@@ -58,9 +55,9 @@ class AbidesRunner:
             
             # The list of agent IDs representing our LLM personas 
             # In a real implementation, this comes from the Knowledge Graph setup
-            llm_agent_ids = self.config.get("llm_agent_ids", [1, 2, 3])
+            llm_agent_ids = self.config.get("llm_agent_ids", [1, 2])
             
-            while not done and not truncated and self.is_running:
+            while not (done or truncated) and self.is_running:
                 current_time = self._extract_time_from_obs(obs)
                 
                 # 2. Broadcast live market data to React UI
@@ -84,11 +81,17 @@ class AbidesRunner:
             
         except Exception as e:
             logger.error(f"Simulation {self.simulation_id} failed: {str(e)}")
+            # Log traceback for debugging
+            import traceback
+            logger.error(traceback.format_exc())
             raise e
         finally:
             self.is_running = False
             if self.env:
-                self.env.close()
+                try:
+                    self.env.close()
+                except:
+                    pass
                 
     def stop(self):
         """Signals the loop to stop early."""
@@ -96,17 +99,15 @@ class AbidesRunner:
 
     def _extract_time_from_obs(self, obs: dict) -> str:
         """Extracts human readable timestamp from ABIDES observation."""
-        # ABIDES internal time is nanoseconds since midnight
-        # Simplified for now, we will map this properly later
-        return "10:00:00"
+        # For UAT, just return ISO now
+        from datetime import datetime
+        return datetime.now().isoformat()
 
     def _format_agent_states(self, obs: dict, agent_ids: List[int]) -> Dict[int, dict]:
         """
         Takes the raw numerical observation from ABIDES and formats it 
         into discrete dictionaries for each LLM agent.
         """
-        # In a real implementation, we parse the portfolio and L2 book 
-        # and attach the specific persona from the Knowledge Graph.
         states = {}
         for aid in agent_ids:
             states[aid] = {
