@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch, MagicMock
 from app.services.data.market_store import MarketDataStore
 
 @pytest.fixture
@@ -53,3 +54,18 @@ def test_retrieve_orders_by_timestamp(store):
     # Check ascending order
     assert data[0]["price"] == 100.0
     assert data[2]["price"] == 102.0
+
+def test_insert_tick_exception_handling(store):
+    # Force an exception by breaking the connection
+    store.conn.close()
+    
+    # This shouldn't raise an exception, it should be caught and logged
+    store.insert_tick("sim_X", {"symbol": "NVDA", "price": 100.0})
+
+def test_get_market_data_exception_handling(store):
+    # Force an exception by breaking the connection
+    store.conn.close()
+    
+    # This shouldn't raise an exception, it should return an empty list
+    data = store.get_market_data("sim_X", "NVDA")
+    assert data == []
