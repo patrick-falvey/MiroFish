@@ -1356,7 +1356,7 @@ Return a JSON-formatted list of sub-queries."""
             "1. Answer directly in natural language, do not call any tools\n"
             "2. Do not return JSON format or tool call format\n"
             "3. Do not use Markdown headings (e.g., #, ##, ###)\n"
-            "4. Answer each question in order, starting each answer with "Question X:" (X is the question number)\n"
+            "4. Answer each question in order, starting each answer with 'Question X:' (X is the question number)\n"
             "5. Separate answers between questions with a blank line\n"
             "6. Answers should have substantive content, at least 2-3 sentences per question\n\n"
         )

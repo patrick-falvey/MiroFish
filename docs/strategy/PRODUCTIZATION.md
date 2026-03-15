@@ -31,33 +31,43 @@ Financial professionals need to answer: **"If Event X happens, what are the seco
 
 Current tools fail at this because:
 
-1. **Bloomberg/Refinitiv** — excellent data terminals, but no simulation or scenario modeling
-2. **Traditional quant models** — pattern-match on historical data; can't handle novel events
-3. **Single-agent LLM tools** — can reason about one company but can't model multi-actor cascades
-4. **Existing multi-agent research** (TradingAgents, StockAgent, FinMem) — academic prototypes, not production platforms; none combine document ingestion, knowledge graphs, simulation, and reporting in a single product
+1. **Monte Carlo scenario tools (FactSet, MSCI, Bloomberg PORT, Morningstar Direct)** — the real incumbent competitors. They use statistical simulation or historical replay, but **cannot model behavioral feedback loops or cascading second/third-order effects**. They answer "what happened before" not "what happens next given how actors behave"
+2. **Bloomberg/Refinitiv** — excellent data terminals, but no simulation or scenario modeling
+3. **Traditional quant models** — pattern-match on historical data; can't handle novel events (the Lucas Critique: rules calibrated to past behavior break under regime changes)
+4. **Single-agent LLM tools (FinRobot, FinAgent)** — can reason about one company or generate research reports, but can't model multi-actor cascades or market microstructure
+5. **LLM multi-agent trading systems (TradingAgents, StockAgent, FinMem, FinCon, QuantAgents)** — academic prototypes focused on generating trade signals, not scenario analysis; none combine document ingestion, knowledge graphs, realistic order book simulation, and structured reporting
+6. **Traditional ABM platforms (Simudyne)** — the only production ABM vendor (deployed at HKEX, LSEG), but no LLM agents, no knowledge graphs, no document ingestion — it's a quant tool, not an AI-powered scenario platform
+7. **Generative market models (MarS)** — emerging foundation-model approach that learns order-level dynamics from data without explicit agents; strong realism but black-box with no explainable agent narratives
 
-### The Gap
+### The Gap: Four Pillars Nobody Combines
 
-No existing product combines:
+No existing product chains all four pillars: **(1) document → knowledge graph**, **(2) multi-agent market simulation** with realistic order book, **(3) hybrid LLM + rule-based agents**, and **(4) structured scenario reports** with confidence intervals.
 
-| Capability | nVision | TradingAgents | StockAgent | Bloomberg |
-|---|---|---|---|---|
-| Document → knowledge graph | ✅ | ❌ | ❌ | ❌ |
-| Auto-generated agent personas | ✅ | ❌ | Partial | ❌ |
-| Multi-agent world simulation | ✅ | Debate only | ✅ | ❌ |
-| Evolving graph memory | ✅ | ❌ | ❌ | ❌ |
-| ReACT report generation | ✅ | ❌ | ❌ | ❌ |
-| Interactive post-sim Q&A | ✅ | ❌ | ❌ | ❌ |
-| Production-ready platform | ✅ | ❌ | ❌ | ✅ |
+| Capability | nVision | FactSet/MSCI | Simudyne | TradingAgents | FinRobot | StockSim | MarS |
+|---|---|---|---|---|---|---|---|
+| Document → knowledge graph | ✅ | ❌ | ❌ | ❌ | Partial | ❌ | ❌ |
+| Auto-generated agent personas | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Multi-agent market simulation | ✅ | Monte Carlo | ✅ | Debate only | ❌ | ✅ | Generative |
+| Realistic order book / matching | ✅ | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Hybrid LLM + rule-based agents | ✅ | ❌ | Rule only | LLM only | LLM only | LLM only | No agents |
+| Evolving graph memory | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Structured scenario reports | ✅ | Templates | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Interactive post-sim Q&A | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Interview individual agents** | **✅** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Calibrated confidence intervals | ✅ | ❌ | Partial | ❌ | ❌ | ❌ | ❌ |
+| Production SaaS platform | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+
+**The pitch in one sentence:** nVision is behavioral simulation for markets — where FactSet/MSCI tell you what the statistics say, nVision shows you what the *actors* do.
 
 ### Market Size
 
-- ~3,500 family offices in the US (most technology-underserved)
+- ~3,500 family offices in the US (**primary beachhead** — technology-underserved, 3x AI adoption growth 2024→2025, 65% prioritize AI investments per JPMorgan survey of 333 family offices, shorter sales cycles than institutional)
 - ~13,000 registered investment advisors
-- ~4,000 hedge funds
+- ~4,000 hedge funds (95% of fund managers now use Gen AI per AIMA survey of 150 managers/$788B AUM — but almost entirely for research/admin, not simulation)
 - Fortune 500 corporate treasury/risk teams
 - Insurance company investment and catastrophe modeling teams
 - Fintech startups building on AI for finance
+- Adjacent: synthetic financial data market ($310-576M in 2024), financial digital twin market ($3.9B in 2024, projected $18.4B by 2035)
 
 ---
 
@@ -68,10 +78,12 @@ No existing product combines:
 A multi-tenant SaaS platform where financial professionals can:
 
 1. **Define scenarios** — upload earnings reports, regulatory filings, news events, or describe hypothetical events
-2. **Build financial knowledge graphs** — automatically extract market actors, positions, relationships, and constraints
-3. **Run simulations** — watch AI agents (institutional investors, retail traders, algorithmic strategies, market makers, regulators) interact in a simulated market environment
-4. **Receive predictions** — scenario-weighted price paths, cascade risk points, time-to-impact, and confidence intervals
-5. **Explore interactively** — ask follow-up questions, interview individual agents, run what-if variations
+2. **Build financial knowledge graphs** — automatically extract market actors, positions, relationships, and constraints using FinDKG-style dynamic graph construction from financial documents
+3. **Run simulations** — watch AI agents (institutional investors, retail traders, algorithmic strategies, market makers, regulators) interact in a simulated market environment with realistic order book mechanics
+4. **Receive predictions** — scenario-weighted price paths, cascade risk points, time-to-impact, and calibrated confidence intervals (conformal prediction — the emerging standard for financial AI uncertainty)
+5. **Explore interactively** — ask follow-up questions, **interview individual agents** ("Why did you sell NVDA at that price?"), run what-if variations
+
+**Killer feature: Interview-an-Agent.** No other platform lets you interrogate a simulated hedge fund PM about their reasoning, a market maker about their inventory management, or a retail cohort about their sentiment. This is inherently more explainable than any black-box model — and explainability is increasingly a regulatory baseline expectation (EU AI Act high-risk rules take effect August 2, 2026).
 
 ### Five-Step Pipeline (adapted from MiroFish)
 
@@ -222,7 +234,8 @@ A multi-tenant SaaS platform where financial professionals can:
 |---|---|---|
 | Real-time event monitoring | $2,000-$5,000/mo | Continuous event detection + instant simulation |
 | Custom data integration | $5,000 one-time + $500/mo | Connect proprietary data sources |
-| Historical calibration package | $10,000-$25,000 one-time | Backtest against 2+ years of events for client-specific tuning |
+| Historical calibration package | $10,000-$25,000 one-time | Backtest against 2+ years of events for client-specific tuning using ANTR neural posterior estimation (50% calibration error reduction vs. traditional methods) |
+| Synthetic market data feed | $3,000-$10,000/mo | Simulation-generated synthetic order book, price, and agent behavior data for ML training, strategy backtesting, or regulatory sandbox testing (FCA-endorsed approach) |
 | White-label deployment | Custom | Full private deployment on client's AWS account |
 
 ### AWS Marketplace Listing
@@ -238,21 +251,27 @@ A multi-tenant SaaS platform where financial professionals can:
 
 ### Phase 1: Demo & Validation (Months 1-3)
 
-**Objective:** Build a compelling financial demo on top of the existing nVision/MiroFish architecture and validate demand.
+**Objective:** Build a compelling financial demo and validate demand, targeting family offices as the primary beachhead.
+
+**Why family offices first:** Technology-underserved (no Bloomberg terminals or quant teams), 3x AI adoption growth YoY, shorter sales cycles than institutional, and 51% already use AI in their investment process (but zero use simulation-based scenario analysis — this is our gap). They need the *answer* ("what happens if..."), not raw data.
 
 **Actions:**
 1. Build a "Financial Scenario" mode using the existing 5-step pipeline with financial entity types
-2. Pre-load 2-3 compelling demos:
-   - "What happens if NVIDIA misses earnings by 20%?"
-   - "What happens if the Fed does an emergency 50bps rate cut?"
-   - "Simulate the market impact of a major cybersecurity breach at a top-5 bank"
-3. Record a 3-minute product demo video
-4. Identify and reach out to 5-10 target prospects through AWS FinServ rep introductions
-5. Run 3-5 discovery calls to validate willingness to pay
+2. Pre-load 2-3 compelling demos tailored to family office concerns:
+   - "What happens if NVIDIA misses earnings by 20%?" (concentrated tech exposure)
+   - "What happens if the Fed does an emergency 50bps rate cut?" (fixed income reallocation)
+   - "Simulate the market impact of a major cybersecurity breach at a top-5 bank" (tail risk / contagion)
+3. **Lead every demo with the calibration story** — show confidence intervals, explain the ML calibration feedback loop, demonstrate the residual error correction. The #1 reason ABM fails in production is calibration; leading with this differentiates immediately from both Monte Carlo tools and academic prototypes
+4. **Showcase Interview-an-Agent** — this is the "aha moment" in demos. Let prospects ask a simulated hedge fund PM why they sold, or interrogate a market maker about their spread widening
+5. Record a 3-minute product demo video
+6. Identify and reach out to 5-10 family offices through AWS FinServ rep introductions and family office networks (RBC/Campden, JPMorgan GFO)
+7. Run 3-5 discovery calls to validate willingness to pay
+
+**Positioning:** Frame nVision against FactSet/MSCI scenario tools, not against other ABMs. The pitch is **"behavioral simulation > statistical simulation"** — where Monte Carlo tells you what the statistics say, nVision shows you what the actors do.
 
 **Investment:** 2-3 engineers × 8-12 weeks (~$80K-$120K internal cost)
 
-**Success criteria:** 3+ prospects express willingness to pay; 1+ signs a LOI or POC agreement
+**Success criteria:** 3+ family office prospects express willingness to pay; 1+ signs a LOI or POC agreement
 
 ### Phase 2: Beta Platform (Months 3-6)
 
@@ -286,16 +305,17 @@ A multi-tenant SaaS platform where financial professionals can:
 
 ### Phase 4: Scale & Expand (Months 9-18)
 
-**Objective:** Reach $100K+ MRR and expand use cases.
+**Objective:** Reach $100K+ MRR and expand use cases beyond scenario analysis.
 
 **Actions:**
 1. Add real-time event monitoring tier
 2. Expand beyond equities: FX, commodities, crypto, credit
 3. Add custom calibration packages for enterprise
-4. Build partner channel (other AWS consultancies resell nVision)
-5. Consider strategic investment or spin-out if growth warrants it
+4. **Launch synthetic market data product** — sell simulation-generated order book, price, and agent behavior data as a standalone product for ML training, strategy backtesting, and regulatory sandbox testing (FCA-endorsed). This creates a secondary revenue stream that reinforces the calibration flywheel (more simulations → better models → better synthetic data → more customers)
+5. Build partner channel (other AWS consultancies resell nVision)
+6. Consider strategic investment or spin-out if growth warrants it
 
-**Revenue target:** 30-50 subscribers = $200K-$500K MRR
+**Revenue target:** 30-50 subscribers = $200K-$500K MRR + synthetic data revenue
 
 ---
 
@@ -329,20 +349,36 @@ The $6M earnout target for 2026 breaks down to ~$500K/month average. nVision pla
 
 ## Competitive Moat
 
+### The Calibration Advantage (core differentiator)
+
+The #1 reason financial ABM hasn't gone mainstream is **calibration** — too many parameters, equifinality (multiple configs produce identical outputs), and computationally prohibitive validation. nVision solves this with:
+
+1. **ANTR neural posterior estimation** — cutting-edge technique (2024-2026) that reduces calibration error by 50% vs. traditional methods
+2. **Conformal prediction confidence intervals** — honest, calibrated uncertainty (not fake precision). The emerging standard for financial AI
+3. **Residual error model** — meta-learner that continuously corrects simulation bias using prediction-vs-actual feedback
+4. **LLM agents inherently sidestep the Lucas Critique** — unlike rule-based ABMs that break under regime changes, LLM agents adapt to novel scenarios naturally because they reason from first principles, not fitted parameters
+
+This matters because nVision's primary competitor is Monte Carlo (FactSet/MSCI), not other ABMs. Monte Carlo gives no confidence intervals on behavioral outcomes. nVision's calibration story converts the biggest ABM weakness into a selling point.
+
 ### Short-term advantages (0-6 months)
-- **Working prototype** — nVision already runs end-to-end; competitors are academic papers
+- **Working prototype** — nVision already runs end-to-end; LLM trading agent competitors are academic papers
+- **Four-pillar integration** — the only system that chains document → knowledge graph → agent simulation → structured report. Research confirms no existing product combines all four (see competitive gap table)
+- **Interview-an-Agent explainability** — no competitor offers this; inherently more explainable than black-box alternatives, which is a regulatory selling point (EU AI Act August 2026)
 - **AWS-native architecture** — qualifies for funding, co-sell, and Marketplace from day one
 - **nClouds delivery capability** — can customize and deploy for enterprise customers immediately
 
 ### Medium-term advantages (6-18 months)
-- **Calibration data network effect** — every simulation run improves the models; early customers get better predictions over time
+- **Calibration data network effect** — every simulation run improves the models via residual error feedback; early customers get better predictions over time
 - **Customer-specific tuning** — enterprise tier builds moats per-customer (their models are calibrated to their portfolio and style)
+- **Hybrid agent architecture** — validated by FCLAgent research (PRIMA 2025) showing LLM-generated psychological biases combined with rule-based prediction reproduce path-dependent patterns that conventional agents miss. Hybrid is 40-60% cheaper on LLM costs than pure-LLM approaches while being more accurate
 - **AWS distribution** — Marketplace listing + co-sell is a channel most AI startups can't access
+- **Synthetic data revenue stream** — simulation outputs can be sold as training data ($310-576M market), creating a secondary revenue line that reinforces the calibration flywheel
 
 ### Long-term advantages (18+ months)
-- **Proprietary financial knowledge graph** — accumulated entity/relationship data across all tenants becomes a unique dataset
-- **Simulation history** — thousands of simulation runs create a backtesting corpus no competitor can replicate
-- **Brand in FinServ AI** — first-mover in "simulation-based market prediction platform"
+- **Proprietary financial knowledge graph** — accumulated entity/relationship data across all tenants becomes a unique dataset. FinDKG-style dynamic graphs evolve with every simulation
+- **Simulation history** — thousands of simulation runs create a backtesting corpus no competitor can replicate. This is the training data for the next generation of models
+- **Brand in FinServ AI** — first-mover in "behavioral simulation for markets"
+- **Regulatory moat** — as AI regulation tightens (EU AI Act, SEC guidance), nVision's explainable agent-persona approach becomes a compliance advantage that black-box competitors (MarS, traditional quant models) cannot match
 
 ---
 
@@ -351,12 +387,15 @@ The $6M earnout target for 2026 breaks down to ~$500K/month average. nVision pla
 | Risk | Severity | Mitigation |
 |---|---|---|
 | Financial data feeds are expensive at scale | Medium | Start with free/cheap sources; pass costs to Enterprise tier; negotiate volume discounts |
-| LLM hallucination in financial reasoning | High | ML calibration layer corrects LLM bias; confidence intervals flag low-certainty predictions; human-in-the-loop for high-stakes |
-| Regulatory concerns (investment advice) | Medium | Clear disclaimers ("for informational purposes only"); consult securities attorney before GA; avoid specific buy/sell recommendations |
-| Long sales cycles in FinServ | Medium | AWS co-sell shortens procurement; Marketplace billing reduces friction; start with smaller firms (shorter cycles) |
+| LLM hallucination in financial reasoning | High | ML calibration layer corrects LLM bias; conformal prediction confidence intervals flag low-certainty predictions; residual error model continuously corrects; human-in-the-loop for high-stakes |
+| **LLM prompt sensitivity** (Lopez-Lira 2025 showed LLM trading behavior changes dramatically with prompt wording) | High | Hybrid architecture mitigates: LLMs for qualitative reasoning only, ML models for quantitative sizing/timing, rule-based agents for deterministic strategies. Prompt sensitivity testing in CI pipeline |
+| Regulatory concerns (investment advice) | Medium | Clear disclaimers ("for informational purposes only"); consult securities attorney before GA; avoid specific buy/sell recommendations. EU AI Act high-risk rules (Aug 2026) favor nVision's explainable agent-persona approach over black-box alternatives |
+| Long sales cycles in FinServ | Medium | **Family offices first** — shorter cycles, no procurement bureaucracy. AWS co-sell shortens institutional procurement; Marketplace billing reduces friction |
 | Engineering bandwidth competes with consulting revenue | Medium | Phase 1 demo is small investment; platform build funded by early beta revenue; dedicated product team by Phase 3 |
-| Prediction accuracy isn't good enough | High | Calibration engine improves continuously; confidence intervals manage expectations; position as "scenario analysis" not "crystal ball" |
-| Competitors build similar platforms | Low (now), Medium (later) | Speed to market; calibration data moat; AWS distribution advantage; enterprise customization |
+| Prediction accuracy isn't good enough | High | ANTR neural posterior estimation cuts calibration error 50%; conformal prediction manages expectations with honest uncertainty; position as "scenario analysis" not "crystal ball"; every simulation improves the residual error model |
+| **Simudyne adds LLM agents** | Medium (6-12 mo) | Simudyne's strength is traditional ABM at HKEX/LSEG scale, but they have no KG, no document ingestion, no report generation. Adding LLMs to an existing non-LLM platform is architecturally harder than nVision's native hybrid approach. Speed to market + four-pillar integration is the moat |
+| **MarS or similar generative market models mature** | Low (now), Medium (18+ mo) | Generative models are black-box — no agent narratives, no interview capability, no explainability. Position nVision as the explainable alternative. Complementary, not competing: nVision could incorporate generative models as a data source |
+| Competitors build similar platforms | Low (now), Medium (later) | Speed to market; calibration data flywheel; AWS distribution advantage; enterprise customization; no competitor has all four pillars today |
 
 ---
 
@@ -398,9 +437,40 @@ The $6M earnout target for 2026 breaks down to ~$500K/month average. nVision pla
 
 ## Appendix: Key References
 
+### Origin
 - **MiroFish codebase:** Origin platform (social simulation engine)
 - **OASIS:** Open Agent Social Interaction Simulations ([arxiv.org/abs/2411.11581](https://arxiv.org/abs/2411.11581))
-- **TradingAgents:** Multi-agent LLM financial trading framework ([github.com/TauricResearch/TradingAgents](https://github.com/TauricResearch/TradingAgents))
+
+### LLM Financial Agent Systems
+- **TradingAgents:** Multi-agent LLM financial trading framework, v0.2.0 Feb 2026 ([github.com/TauricResearch/TradingAgents](https://github.com/TauricResearch/TradingAgents)) ([arxiv.org/abs/2412.20138](https://arxiv.org/abs/2412.20138))
 - **StockAgent:** LLM-based stock trading in simulated environments ([arxiv.org/abs/2407.18957](https://arxiv.org/abs/2407.18957))
 - **FinRobot:** Open-source AI agent platform for financial analysis ([github.com/AI4Finance-Foundation/FinRobot](https://github.com/AI4Finance-Foundation/FinRobot))
-- **FinMem:** LLM trading agent with layered memory ([github.com/pipiku915/FinMem-LLM-StockTrading](https://github.com/pipiku915/FinMem-LLM-StockTrading))
+- **FinMem:** LLM trading agent with layered memory, ICLR 2024 ([arxiv.org/abs/2311.13743](https://arxiv.org/abs/2311.13743))
+- **FinCon:** Manager-analyst hierarchy with verbal reinforcement, NeurIPS 2024 ([arxiv.org/abs/2407.06567](https://arxiv.org/abs/2407.06567))
+- **QuantAgents:** 26 tools, 3 memory types, live trading with 111% returns ([arxiv.org/abs/2509.09995](https://arxiv.org/abs/2509.09995))
+- **HedgeAgents:** Multi-asset portfolio hedging with risk constraints ([arxiv.org/abs/2502.13165](https://arxiv.org/abs/2502.13165))
+- **FLAG-Trader:** Hybrid LLM + RL, ACL 2025 ([arxiv.org/abs/2502.11433](https://arxiv.org/abs/2502.11433))
+- **FCLAgent:** Fundamental-Chartist-LLM-Agent validating hybrid approach, PRIMA 2025 ([arxiv.org/abs/2510.12189](https://arxiv.org/abs/2510.12189))
+- **"Can LLMs Trade?" (Lopez-Lira, Apr 2025):** Landmark study showing LLM agents produce realistic price discovery but are highly prompt-sensitive ([arxiv.org/abs/2504.10789](https://arxiv.org/abs/2504.10789))
+- **MarketAgents:** Double auction with literate agents ([github.com/marketagents-ai/MarketAgents](https://github.com/marketagents-ai/MarketAgents))
+
+### Market Simulation Infrastructure
+- **ABIDES (JPMorgan):** Agent-Based Interactive Discrete Event Simulation, NASDAQ ITCH/OUCH protocol ([github.com/jpmorganchase/abides-jpmc-public](https://github.com/jpmorganchase/abides-jpmc-public))
+- **StockSim:** Dual-mode order-level simulator for 500+ concurrent LLM agents ([arxiv.org/abs/2507.09255](https://arxiv.org/abs/2507.09255))
+- **JAX-LOB:** GPU-accelerated LOB simulator, 75x faster per-message ([arxiv.org/abs/2308.13289](https://arxiv.org/abs/2308.13289))
+- **Simudyne:** Commercial ABM platform deployed at HKEX and LSEG ([simudyne.com](https://simudyne.com/))
+- **MarS:** Large Market Model — generative foundation model for order-level dynamics
+
+### Knowledge Graphs for Finance
+- **FinDKG:** Dynamic knowledge graph construction from financial news, ACM ICAIF 2024 ([github.com/xiaohui-victor-li/FinDKG](https://github.com/xiaohui-victor-li/FinDKG))
+- **FinReflectKG:** Agentic KG construction from SEC 10-K filings, 17.5M triplets, ACM ICAIF 2025 ([huggingface.co/datasets/domyn/FinReflectKG](https://huggingface.co/datasets/domyn/FinReflectKG))
+
+### Calibration & ML
+- **ANTR neural posterior estimation:** 50% calibration error reduction for ABMs (2024-2026)
+- **Conformal prediction:** Emerging standard for calibrated uncertainty in financial AI
+- **Bank of England Working Paper 1122 (Feb 2025):** ABM at central banks survey ([bankofengland.co.uk](https://www.bankofengland.co.uk/working-paper/2025/agent-based-modeling-at-central-banks-recent-developments-and-new-challenges))
+
+### Market Intelligence
+- **AIMA survey (2025):** 95% of fund managers use Gen AI, $788B AUM surveyed
+- **RBC/Campden (2025):** Family office AI adoption 3x growth YoY
+- **JPMorgan GFO (2025):** 65% of 333 family offices prioritize AI investments

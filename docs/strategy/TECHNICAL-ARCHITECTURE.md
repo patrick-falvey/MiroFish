@@ -176,10 +176,12 @@ backend/app/
 
 1. **Tenant isolation by default** — every data path is tenant-scoped; no shared-state leaks
 2. **Async everything** — no synchronous blocking on LLM or simulation calls; all long-running work goes through job queues
-3. **Hybrid LLM + ML** — LLMs for reasoning and novelty; ML models for precision and speed
+3. **Hybrid LLM + ML** — LLMs for reasoning and novelty; ML models for precision and speed; rule-based agents for deterministic strategies. Validated by FCLAgent (PRIMA 2025) and Lopez-Lira (2025) research
 4. **AWS-native** — use managed services over self-hosted where possible; minimize undifferentiated ops
 5. **Event-driven** — use events for inter-service communication; services are loosely coupled
 6. **Cost-aware** — metered per-tenant; right-size compute for each tier
+7. **Build on proven open-source** — adopt battle-tested components (ABIDES matching engine, FinDKG-style KG construction, conformal prediction) rather than building from scratch. Compose best-in-class components into a unique integrated platform
+8. **Calibration-first** — every architectural decision should support the calibration feedback loop (prediction → actual → residual → retrain). The calibration story is nVision's core differentiator against both Monte Carlo tools and academic ABM prototypes
 
 ---
 
@@ -406,6 +408,17 @@ Attributes:
 
 Neptune uses Apache TinkerPop / Gremlin for property graph queries.
 
+#### Graph Construction Pipeline (FinDKG-inspired)
+
+nVision adopts the **FinDKG approach** (ACM ICAIF 2024) for dynamic knowledge graph construction from financial documents, adapted for Neptune:
+
+1. **Document ingestion** — PDFs, 10-Ks, earnings transcripts, news articles parsed into chunks
+2. **LLM-based entity/relationship extraction** — Bedrock (Claude) extracts (Head Entity, Head Type, Relationship, Tail Entity, Tail Type) triples using a financial ontology schema. Multi-pass extraction with reflection-agent validation (inspired by FinReflectKG) catches extraction errors before graph write
+3. **Temporal graph evolution** — unlike static KGs, nVision's graphs evolve over time. Each entity/edge carries a `valid_from` / `valid_to` timestamp. The graph after simulation differs from the graph before (positions change, exposures shift, new relationships emerge)
+4. **KGTransformer-style attention** — for entity importance ranking and impact propagation prediction, nVision uses an attention-based GNN over the temporal graph (inspired by FinDKG's KGTransformer, which achieved ~15% improvement over SOTA in link prediction)
+
+This replaces Zep Cloud's built-in entity extraction with a purpose-built financial extraction pipeline that gives full control over the ontology.
+
 #### Vertex Labels (Financial Entity Types)
 
 ```
@@ -568,6 +581,52 @@ All ML models are trained in SageMaker, versioned in S3, and deployed to SageMak
 | **Time-to-Impact Estimator** | lifelines (survival model) | Event → peak-impact timing data | Serverless | <30ms | Monthly |
 | **Entity Importance Ranker** | NetworkX (PageRank) | Knowledge graph topology | Lambda (no endpoint) | <100ms | Per graph build |
 
+### Calibration Infrastructure (Core Differentiator)
+
+Calibration is the #1 reason financial ABM hasn't gone mainstream. nVision's calibration infrastructure is architecturally first-class, not an afterthought.
+
+#### ANTR Neural Posterior Estimation
+
+Traditional ABM calibration uses grid search or Bayesian optimization — computationally prohibitive for models with >20 parameters. nVision adopts **ANTR (Amortized Neural posterior estimation with Truncation and Reweighting)**, a cutting-edge technique (2024-2026) that:
+
+1. Trains a neural density estimator on synthetic simulation outputs
+2. At inference time, conditions on observed market data to produce a posterior distribution over agent parameters in a single forward pass (no iterative optimization)
+3. Achieves **~50% reduction in calibration error** vs. traditional methods
+4. Supports online updates — each new simulation run improves the posterior without full retraining
+
+Implementation: SageMaker Training pipeline produces an ANTR model per simulation configuration. Deployed as a serverless SageMaker endpoint. Invoked after each simulation to update the calibration posterior.
+
+#### Conformal Prediction Confidence Intervals
+
+nVision uses **conformal prediction** (not Gaussian assumptions) for all uncertainty estimates:
+
+- Distribution-free: makes no assumptions about the underlying data distribution
+- Guarantees finite-sample coverage (e.g., 90% prediction interval contains the true value ≥90% of the time)
+- Adapts automatically as the model improves — intervals shrink as calibration data accumulates
+- This is the emerging standard for financial AI uncertainty quantification
+
+#### Calibration Feedback Loop
+
+```
+Simulation Run → Predicted Outcomes → Wait for Actuals → Compute Residuals
+       ↑                                                         │
+       │    ┌─────────────────────────────────────────────────┐  │
+       │    │           Calibration Store (DynamoDB)           │  │
+       │    │  prediction_id, predicted, actual, residual,     │◄─┘
+       │    │  agent_params, market_regime, event_type         │
+       │    └────────────────────┬────────────────────────────┘
+       │                         │
+       │    ┌────────────────────▼────────────────────────────┐
+       │    │         ANTR Retraining Pipeline                 │
+       │    │  (SageMaker Training, triggered by EventBridge   │
+       │    │   when calibration store reaches N new samples)  │
+       │    └────────────────────┬────────────────────────────┘
+       │                         │
+       └─────────────────────────┘
+```
+
+Every simulation run produces calibration data. This creates a flywheel: more customers → more simulations → better calibration → better predictions → more customers.
+
 ### Model A/B Testing
 
 SageMaker endpoints support production variants. New model versions deploy as a shadow variant receiving 10% of traffic. Promotion to primary after 7 days of equivalent or better performance on residual error metrics.
@@ -576,9 +635,10 @@ SageMaker endpoints support production variants. New model versions deploy as a 
 
 Enterprise tenants can request custom model calibration:
 1. Upload historical portfolio + trade data
-2. SageMaker Training job fine-tunes Agent Action Predictor on their specific behavior
-3. Dedicated SageMaker endpoint serves their custom model
-4. Isolated from other tenants' models
+2. ANTR posterior fine-tuned on their specific historical outcomes
+3. SageMaker Training job fine-tunes Agent Action Predictor on their specific behavior
+4. Dedicated SageMaker endpoint serves their custom model
+5. Isolated from other tenants' models — their calibration data never mixes
 
 ---
 
@@ -749,62 +809,105 @@ Channels:
 
 The current engine uses OASIS (camel-oasis) to simulate Twitter and Reddit interactions. Agents post, like, repost, follow, and comment. This is fundamentally a **social media behavior engine**.
 
-### Target: Financial Market Simulation Engine
+### Target: Financial Market Simulation Engine (ABIDES-based)
 
-The simulation engine is the core IP. It needs a ground-up redesign for financial markets.
+The simulation engine is the core IP. Rather than building from scratch, nVision adopts **ABIDES** (JPMorgan's Agent-Based Interactive Discrete Event Simulation) as the foundation for the matching engine and market microstructure layer, extending it with LLM agent integration, knowledge graph connectivity, and the constraint/cascade detection systems.
+
+#### Why ABIDES as Foundation
+
+ABIDES is the most battle-tested open-source market simulation framework, developed by JPMorgan AI Research:
+- **ABIDES-Core:** General-purpose discrete event simulator with latency-aware agent messaging
+- **ABIDES-Markets:** NASDAQ-mimicking exchange supporting ITCH/OUCH protocol, with proven stylized trading agents (zero-intelligence, momentum, market makers)
+- **ABIDES-Gym:** OpenAI Gym wrapper for reinforcement learning integration
+- Supports tens of thousands of concurrent agents with realistic message-based communication
+- Already validated for producing realistic market microstructure features (bid-ask spreads, price impact, order book dynamics)
+
+nVision extends ABIDES rather than replacing it, adding three layers on top:
+1. **LLM Agent Layer** — Bedrock-powered discretionary agents that feed orders into the ABIDES exchange
+2. **Knowledge Graph Layer** — Neptune-backed context that informs agent perception and reasoning
+3. **Constraint/Cascade Layer** — financial risk checks and cascade detection that operate alongside the ABIDES matching engine
 
 #### Agent Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    Agent Manager                      │
-│                                                       │
-│  ┌─────────────────────────────────────────────┐      │
-│  │          LLM-Powered Agents                  │      │
-│  │  (Institutional PMs, Retail cohorts)          │      │
-│  │                                               │      │
-│  │  Per time step:                               │      │
-│  │  1. Perceive (graph query → recent events)   │      │
-│  │  2. Reason (Bedrock → interpretation)         │      │
-│  │  3. Decide (Bedrock → action intent)          │      │
-│  │  4. Size (ML model → quantity + timing)       │      │
-│  │  5. Submit (order to matching engine)          │      │
-│  └─────────────────────────────────────────────┘      │
-│                                                       │
-│  ┌─────────────────────────────────────────────┐      │
-│  │          Rule-Based Agents                    │      │
-│  │  (Algos, Market Makers)                       │      │
-│  │                                               │      │
-│  │  Per time step:                               │      │
-│  │  1. Read market state (price, volume, OB)     │      │
-│  │  2. Apply rules (momentum signal, inventory   │      │
-│  │     management, delta hedging)                │      │
-│  │  3. Submit order                               │      │
-│  └─────────────────────────────────────────────┘      │
-│                                                       │
-│  ┌─────────────────────────────────────────────┐      │
-│  │          Constraint Engine                    │      │
-│  │                                               │      │
-│  │  After each agent submits:                    │      │
-│  │  - Mandate compliance check                   │      │
-│  │  - Position limit check                       │      │
-│  │  - Margin/leverage check                      │      │
-│  │  - Stop-loss trigger check                    │      │
-│  │  - Circuit breaker check                      │      │
-│  │  → Override or block if constraints violated  │      │
-│  └─────────────────────────────────────────────┘      │
-│                                                       │
-│  ┌─────────────────────────────────────────────┐      │
-│  │          Matching Engine                      │      │
-│  │                                               │      │
-│  │  - Collects all orders for time step          │      │
-│  │  - Price-time priority matching               │      │
-│  │  - Updates order book                         │      │
-│  │  - Determines new price                       │      │
-│  │  - Broadcasts to all agents                   │      │
-│  └─────────────────────────────────────────────┘      │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    nVision Agent Manager                          │
+│                                                                   │
+│  ┌─────────────────────────────────────────────┐                  │
+│  │          LLM-Powered Agents (nVision)        │                  │
+│  │  (Institutional PMs, Retail cohorts)          │                  │
+│  │                                               │                  │
+│  │  Per time step:                               │                  │
+│  │  1. Perceive (Neptune query → recent events) │                  │
+│  │  2. Reason (Bedrock → interpretation)         │                  │
+│  │  3. Decide (Bedrock → action intent)          │  FCLAgent-style  │
+│  │     • LLM generates psychological bias        │  hybrid: LLM for │
+│  │     • ML model corrects for prompt sensitivity │  qualitative,    │
+│  │  4. Size (SageMaker → quantity + timing)      │  ML for precision│
+│  │  5. Submit (order to ABIDES exchange)          │                  │
+│  └─────────────────────────────────────────────┘                  │
+│                                                                   │
+│  ┌─────────────────────────────────────────────┐                  │
+│  │    Rule-Based Agents (ABIDES-native + custom)│                  │
+│  │  (Algos, Market Makers, ZI traders)           │                  │
+│  │                                               │                  │
+│  │  ABIDES provides proven implementations:      │                  │
+│  │  - ZeroIntelligenceAgent (liquidity baseline) │                  │
+│  │  - MomentumAgent (trend-following)             │                  │
+│  │  - MarketMakerAgent (inventory management)     │                  │
+│  │  - ValueAgent (fundamental value reversion)    │                  │
+│  │  nVision adds:                                 │                  │
+│  │  - DeltaHedgingAgent (options market maker)    │                  │
+│  │  - StatArbAgent (pairs/mean-reversion)         │                  │
+│  │  - IndexRebalanceAgent (passive flow)          │                  │
+│  └─────────────────────────────────────────────┘                  │
+│                                                                   │
+│  ┌─────────────────────────────────────────────┐                  │
+│  │          Constraint Engine (nVision)          │                  │
+│  │                                               │                  │
+│  │  After each agent submits:                    │                  │
+│  │  - Mandate compliance check                   │                  │
+│  │  - Position limit check                       │                  │
+│  │  - Margin/leverage check                      │                  │
+│  │  - Stop-loss trigger check                    │                  │
+│  │  - Circuit breaker check                      │                  │
+│  │  → Override or block if constraints violated  │                  │
+│  └─────────────────────────────────────────────┘                  │
+│                                                                   │
+│  ┌─────────────────────────────────────────────┐                  │
+│  │    ABIDES Exchange (matching engine)          │                  │
+│  │                                               │                  │
+│  │  - NASDAQ ITCH/OUCH protocol simulation       │                  │
+│  │  - Price-time priority matching                │                  │
+│  │  - Full limit order book with L2/L3 depth     │                  │
+│  │  - Partial fills, cancellations, amendments    │                  │
+│  │  - Latency-aware message passing               │                  │
+│  │  - Produces realistic microstructure features  │                  │
+│  │  - Broadcasts fills + book updates to agents   │                  │
+│  └─────────────────────────────────────────────┘                  │
+│                                                                   │
+│  ┌─────────────────────────────────────────────┐                  │
+│  │    Cascade Detection Engine (nVision)         │                  │
+│  │                                               │                  │
+│  │  After each matching cycle:                   │                  │
+│  │  - Check for forced-liquidation feedback loops│                  │
+│  │  - Cascade Probability Model (RNN) evaluates  │                  │
+│  │    probability of contagion at each price level│                  │
+│  │  - Supply Chain GNN propagates impact through  │                  │
+│  │    the knowledge graph                         │                  │
+│  │  - Alerts if cascade probability > threshold   │                  │
+│  └─────────────────────────────────────────────┘                  │
+└─────────────────────────────────────────────────────────────────┘
 ```
+
+#### LLM Agent Prompt Sensitivity Mitigation
+
+Lopez-Lira (2025) demonstrated that LLM trading behavior is **highly sensitive to prompt wording** — agents follow instructions regardless of profit implications. nVision mitigates this through the hybrid architecture:
+
+1. **LLM generates qualitative reasoning only** — "I believe NVDA is overvalued because..." (natural language interpretation)
+2. **ML model translates to quantitative action** — Agent Action Predictor converts qualitative intent to sized orders, correcting for known LLM biases
+3. **Prompt sensitivity testing** — automated CI pipeline tests agent behavior stability across prompt variations; significant behavioral drift triggers alerts
+4. **FCLAgent-validated approach** — PRIMA 2025 research confirmed that combining LLM-generated psychological biases with rule-based price prediction reproduces path-dependent patterns that purely rule-based or purely LLM agents miss
 
 #### Financial Action Types (replaces OASIS Twitter/Reddit actions)
 
@@ -849,13 +952,16 @@ Per step: all agents act → matching engine → price update → constraint che
 
 #### Parallel Execution
 
-LLM-powered agents are the bottleneck (each requires a Bedrock API call). Strategy:
+LLM-powered agents are the bottleneck (each requires a Bedrock API call). ABIDES's discrete event architecture helps by allowing rule-based agents to run at native speed while LLM agents process concurrently.
+
+Strategy:
 
 1. **Batch agent reasoning** — send all LLM agents' prompts concurrently (Bedrock supports batching)
-2. **Rule-based agents run locally** — no API call needed; sub-ms per agent
+2. **ABIDES-native agents run locally** — zero-intelligence, momentum, and market maker agents from ABIDES need no API calls; sub-ms per agent
 3. **ML inference batched** — single SageMaker call with all agents' features
-4. **Target: < 2 seconds per time step** for 100 agents (50 LLM + 50 rule-based)
-5. **Full 72h simulation (288 steps × 100 agents) in ~10 minutes**
+4. **Entity Importance Ranker determines agent fidelity** — PageRank on the knowledge graph determines which agents get high-fidelity LLM simulation vs. cheaper ABIDES-native heuristic agents. Only the top-N most impactful actors (by graph centrality and position size) use LLM reasoning
+5. **Target: < 2 seconds per time step** for 100 agents (30 LLM + 70 ABIDES-native/rule-based)
+6. **Full 72h simulation (288 steps × 100 agents) in ~10 minutes**
 
 ---
 
@@ -962,29 +1068,36 @@ User → Cognito (MFA optional, required for Enterprise)
 
 ### Phase 1: Financial Demo (Months 1-3)
 
-**Goal:** Adapt existing codebase for financial domain; keep single-tenant architecture.
+**Goal:** Adapt existing codebase for financial domain; keep single-tenant architecture. Demonstrate the four-pillar integration (document → KG → simulation → report) with financial entities.
 
 **Changes:**
 ```
-Week 1-2:  Translate all Chinese system prompts to English
+Week 1-2:  Translate all Chinese system prompts to English ✅ (completed)
 Week 2-4:  Replace OASIS social actions with financial action types
-           Build simplified matching engine (no full order book yet)
+           Integrate ABIDES-Markets as the matching engine (pip install abides-markets)
+           — Use ABIDES exchange agent for order matching
+           — Add nVision LLM agent wrapper that submits orders to ABIDES
+           — Keep ABIDES ZI + momentum agents as baseline market participants
            Create financial entity types in ontology generator
+           Build FinDKG-style entity extraction pipeline (Bedrock + financial ontology schema)
 Week 4-6:  Pre-build 2-3 demo scenarios with hardcoded market data
            Replace social media graph visualization with financial entity view
+           Build prompt sensitivity test suite (automated checks for LLM agent behavioral stability)
 Week 6-8:  Build basic price chart component (Lightweight Charts)
            Integrate one free market data source (Alpha Vantage)
+           Build Interview-an-Agent demo flow (the "aha moment" feature)
 Week 8-12: Polish demo flow; record demo video
+           Lead with calibration story in all demo materials
            Deploy on single EC2 instance for demo access
 ```
 
-**Architecture:** Mostly unchanged from current. Flask backend, local storage, Zep Cloud for graphs. Add Alpha Vantage integration and financial simulation logic alongside OASIS (don't remove OASIS yet).
+**Architecture:** Mostly unchanged from current. Flask backend, local storage, Zep Cloud for graphs. Key additions: ABIDES-Markets as the matching engine (replaces the need to build one from scratch), Alpha Vantage integration, financial simulation logic alongside OASIS (don't remove OASIS yet), FinDKG-style extraction pipeline.
 
 **Deliverable:** Working financial demo at `demo.nvision.nclouds.com`
 
 ### Phase 2: Multi-Tenant Foundation (Months 3-6)
 
-**Goal:** Add auth, tenant isolation, and cloud-native data layer. Ship beta.
+**Goal:** Add auth, tenant isolation, and cloud-native data layer. Ship beta to family office design partners.
 
 **Changes:**
 ```
@@ -992,23 +1105,29 @@ Month 3:   CDK project setup; VPC + networking stack
            Cognito user pool + API Gateway with authorizer
            DynamoDB tables with tenant_id partition keys
            S3 bucket with tenant prefix isolation
+           Set up calibration store (DynamoDB table for prediction-vs-actual tracking)
 
 Month 4:   Migrate Flask → FastAPI (async; better for concurrent LLM calls)
            Move from local filesystem → S3 for all storage
            Move from in-memory tasks → SQS + DynamoDB for job queue
            Move from Zep Cloud → Neptune for graph storage
+           Migrate FinDKG-style extraction pipeline from Zep to Neptune
+           — Implement temporal graph evolution (valid_from/valid_to on entities)
+           — Build multi-pass extraction with reflection-agent validation
 
-Month 5:   ECS Fargate deployment (API + simulation worker)
+Month 5:   ECS Fargate deployment (API + simulation worker with ABIDES)
            WebSocket support via API Gateway
            Frontend: add Cognito auth, dashboard, billing portal (Stripe)
            Basic usage metering
+           Conformal prediction confidence intervals on all simulation outputs
 
-Month 6:   Beta launch with 5-10 design partners
+Month 6:   Beta launch with 5-10 family office design partners ($1K-$3K/mo)
            CloudFront + S3 for frontend hosting
            Basic CloudWatch dashboards and alarms
+           Initial ANTR calibration model trained on Phase 1 demo simulation data
 ```
 
-**Architecture:** Multi-tenant cloud-native. No ML models yet — LLM-only simulation. Financial simulation engine v1 (basic matching, LLM agents, no rule-based agents yet).
+**Architecture:** Multi-tenant cloud-native. LLM + ABIDES-native agents (ZI, momentum, market makers). Financial simulation engine v1 (ABIDES matching, LLM agents, ABIDES rule-based agents, conformal prediction CIs). No custom ML models yet — calibration bootstrapping with LLM-only predictions and wide confidence intervals.
 
 ### Phase 3: ML Models + GA (Months 6-9)
 
@@ -1095,23 +1214,28 @@ Bedrock (LLM) costs are the dominant variable cost. At scale, consider:
 | Risk | Severity | Mitigation |
 |---|---|---|
 | Neptune performance at graph scale (>100K nodes per tenant) | Medium | Benchmark early in Phase 2; Neptune Serverless auto-scales; consider partitioning large graphs |
-| Bedrock latency for concurrent agent reasoning (50 agents × Bedrock call per step) | High | Batch calls, use Bedrock provisioned throughput, cache similar prompts, fall back to smaller/faster models for routine agents |
-| OASIS → custom sim engine migration complexity | High | Phase 1 builds alongside OASIS; Phase 2 replaces. Keep OASIS as fallback for social sim use case. |
-| Matching engine correctness (price formation) | Medium | Start simple (uniform price clearing); validate against historical data; iterate toward full LOB |
-| ML model cold start (not enough calibration data initially) | High | Ship without ML in Phase 2 beta; use LLM-only predictions with wide confidence intervals; add ML as data accumulates |
+| Bedrock latency for concurrent agent reasoning (50 agents × Bedrock call per step) | High | Batch calls, use Bedrock provisioned throughput, cache similar prompts, Entity Importance Ranker limits LLM agents to top-N most impactful actors; rest use ABIDES-native agents |
+| OASIS → ABIDES migration complexity | Medium (reduced) | ABIDES is a proven matching engine with existing agent implementations. Phase 1 integrates ABIDES alongside OASIS; Phase 2 replaces OASIS entirely. Lower risk than building custom matching engine from scratch |
+| Matching engine correctness (price formation) | Low (reduced) | ABIDES matching engine is battle-tested by JPMorgan and validated for producing realistic microstructure features. No need to build from scratch |
+| ML model cold start (not enough calibration data initially) | High | Ship without ML in Phase 2 beta; use LLM-only predictions with wide conformal prediction CIs; ANTR calibration bootstraps from small sample sizes better than traditional methods |
+| **LLM prompt sensitivity** (Lopez-Lira 2025) | High | Hybrid architecture: LLMs for qualitative reasoning only, ML/ABIDES for quantitative execution. Automated prompt sensitivity CI tests. FCLAgent approach validated by PRIMA 2025 |
+| **ABIDES integration with async FastAPI** | Medium | ABIDES is synchronous Python; wrap in ECS worker process communicating via SQS. ABIDES simulation loop runs in dedicated worker, not in API process |
+| **FinDKG-style extraction quality** | Medium | Multi-pass extraction with reflection-agent validation catches errors. Start with curated entity types (companies, institutional investors) and expand. Fallback to Zep extraction if needed in Phase 1 |
 
 ### Technical Debt to Address
 
 | Debt | Source | When to Fix |
 |---|---|---|
-| Chinese-language system prompts throughout backend | MiroFish origin | Phase 1 (Week 1-2) |
+| Chinese-language system prompts throughout backend | MiroFish origin | Phase 1 (Week 1-2) ✅ completed |
 | Flask synchronous architecture | MiroFish origin | Phase 2 (migrate to FastAPI) |
-| Zep Cloud dependency for graph storage | MiroFish origin | Phase 2 (migrate to Neptune) |
-| OASIS social media action types hardcoded | MiroFish origin | Phase 1 (add financial actions) |
+| Zep Cloud dependency for graph storage | MiroFish origin | Phase 2 (migrate to Neptune with FinDKG-style extraction) |
+| OASIS social media action types hardcoded | MiroFish origin | Phase 1 (replace with ABIDES matching engine + financial actions) |
+| OASIS social simulation engine | MiroFish origin | Phase 1 (integrate ABIDES alongside); Phase 2 (remove OASIS entirely) |
 | Local filesystem for all storage | MiroFish origin | Phase 2 (migrate to S3) |
-| No test suite | MiroFish origin | Phase 2 (add pytest + React Testing Library) |
+| No test suite | MiroFish origin | Phase 2 (add pytest + React Testing Library + prompt sensitivity tests) |
 | `mirofish` references in package.json, Docker image name | Fork artifact | Phase 1 (rename) |
 | Hardcoded `SECRET_KEY = 'mirofish-secret-key'` | MiroFish origin | Phase 2 (Secrets Manager) |
+| No calibration infrastructure | New requirement | Phase 2 (DynamoDB calibration store + ANTR pipeline) |
 
 ---
 
@@ -1176,7 +1300,59 @@ Bedrock (LLM) costs are the dominant variable cost. At scale, consider:
 - Hybrid reduces Bedrock costs by 40-60% per simulation
 - More accurate: real markets have a mix of discretionary and systematic actors
 
-**Trade-off:** Two different agent implementations to maintain. Mitigated by shared interface (all agents produce orders through the same matching engine).
+**Trade-off:** Two different agent implementations to maintain. Mitigated by shared interface (all agents produce orders through the same ABIDES exchange).
+
+### ADR-005: ABIDES as Matching Engine Foundation
+
+**Context:** nVision needs a realistic order book and matching engine for financial market simulation. Options: (a) build from scratch, (b) adopt ABIDES (JPMorgan), (c) adopt JAX-LOB (GPU-accelerated), (d) adopt StockSim.
+
+**Decision:** Adopt ABIDES-Markets as the matching engine foundation.
+
+**Rationale:**
+- Battle-tested by JPMorgan AI Research; used widely in academic and industry market microstructure research
+- Provides NASDAQ ITCH/OUCH protocol simulation out of the box
+- Includes proven rule-based agent implementations (ZI, momentum, market maker, value) that serve as baseline market participants alongside nVision's LLM agents
+- Python-native — integrates cleanly with the existing Python backend
+- ABIDES-Gym provides OpenAI Gym wrapper for future RL agent integration
+- Open source (BSD license) — no licensing concerns for commercial use
+- Reduces Phase 1 engineering effort by ~4 weeks (no need to build and validate matching engine)
+
+**Alternatives considered:**
+- **Build from scratch:** Higher risk, slower delivery, requires matching engine expertise we don't have in-house. The research confirms matching engine correctness is a non-trivial risk
+- **JAX-LOB:** GPU-accelerated (75x faster per message), but JAX dependency adds infrastructure complexity and is overkill for nVision's agent counts (100-2000, not millions)
+- **StockSim:** Newer (2025), supports 500+ concurrent LLM agents via RabbitMQ, but less battle-tested than ABIDES and adds RabbitMQ dependency
+
+**Trade-off:** ABIDES is synchronous Python, which conflicts with FastAPI's async architecture. Mitigated by running ABIDES simulation loop in a dedicated ECS worker process that communicates with the API via SQS.
+
+### ADR-006: FinDKG-Style Dynamic Knowledge Graph Construction
+
+**Context:** The current system uses Zep Cloud's built-in entity extraction for knowledge graph construction. For production financial use cases, we need more control over the financial ontology, temporal graph evolution, and extraction quality.
+
+**Decision:** Build a FinDKG-inspired extraction pipeline using Bedrock (Claude) with multi-pass validation, targeting Neptune as the graph store.
+
+**Rationale:**
+- FinDKG (ACM ICAIF 2024) demonstrated that LLM-based generative KG construction from financial news achieves ~15% improvement over SOTA in link prediction tasks
+- FinReflectKG (ACM ICAIF 2025) showed that reflection-agent-based multi-pass extraction catches errors that single-pass extraction misses, producing 17.5M normalized triplets from S&P 500 10-Ks
+- Temporal graph evolution (entities and edges with `valid_from` / `valid_to` timestamps) is critical for nVision — the graph must change as the simulation progresses (positions shift, relationships emerge)
+- Financial ontology control — we need entity types specific to market simulation (companies, institutional investors, algo strategies, market makers) that Zep's generic extraction doesn't provide
+- Neptune's named graphs + Gremlin queries are purpose-built for this kind of structured financial entity graph
+
+**Trade-off:** More engineering effort than using Zep's built-in extraction (~2 weeks additional in Phase 1). Mitigated by: (a) Bedrock makes LLM calls cheap and fast, (b) the extraction pipeline is a core differentiator worth investing in, (c) the reflection-agent validation approach catches errors that would otherwise degrade simulation quality.
+
+### ADR-007: ANTR Neural Posterior Estimation for Calibration
+
+**Context:** ABM calibration is the #1 barrier to production deployment. Traditional approaches (grid search, Bayesian optimization) are computationally prohibitive for models with many parameters and suffer from equifinality.
+
+**Decision:** Adopt ANTR (Amortized Neural posterior estimation with Truncation and Reweighting) as the primary calibration technique.
+
+**Rationale:**
+- ANTR achieves ~50% reduction in calibration error vs. traditional methods (2024-2026 research)
+- Amortized inference: trains once, then calibrates new scenarios in a single forward pass (no iterative optimization). This is critical for a SaaS platform where calibration must be fast
+- Supports online updates — each new simulation run improves the posterior without full retraining, creating a natural flywheel
+- Works with small sample sizes better than traditional Bayesian optimization, which is important during the bootstrap phase
+- Pairs naturally with conformal prediction for uncertainty quantification
+
+**Trade-off:** ANTR is cutting-edge (not yet widely adopted in industry). Mitigated by: (a) fallback to traditional Bayesian optimization if ANTR underperforms, (b) conformal prediction provides calibrated uncertainty regardless of the calibration method used, (c) the calibration store captures all prediction-vs-actual data, so we can always retrain with better methods as they emerge.
 
 ---
 
@@ -1221,7 +1397,7 @@ User        API GW      Core API     SQS        Step Fn      ECS Worker    Neptu
 ### Agent Decision Cycle (per time step)
 
 ```
-Agent Manager         Neptune          Bedrock           SageMaker        Matching Engine
+Agent Manager         Neptune          Bedrock           SageMaker        ABIDES Exchange
      │                  │                │                  │                  │
      │──query context──►│                │                  │                  │
      │◄──recent events──│                │                  │                  │
@@ -1230,25 +1406,30 @@ Agent Manager         Neptune          Bedrock           SageMaker        Matchi
      │                  │                │                  │                  │
      │──perceive+reason─────────────────►│                  │                  │
      │◄──action intent + rationale───────│                  │                  │
-     │  ("I want to sell NVDA")          │                  │                  │
+     │  ("I want to sell NVDA because    │                  │                  │
+     │   supply chain exposure is high") │                  │                  │
      │                  │                │                  │                  │
      │──predict size+timing──────────────────────────────►│                  │
      │◄──{sell 30%, TWAP over 2 steps}───────────────────│                  │
+     │  (ML corrects for LLM prompt sensitivity)          │                  │
      │                  │                │                  │                  │
      │──constraint check (internal)──────│                  │                  │
      │  mandate OK? margin OK?           │                  │                  │
      │                  │                │                  │                  │
-     │──submit order────────────────────────────────────────────────────────►│
+     │──submit order (ITCH/OUCH)─────────────────────────────────────────►│
      │                  │                │                  │                  │──match
-     │                  │                │                  │                  │──new price
-     │◄──fill confirmation + new price──────────────────────────────────────│
+     │                  │                │                  │  (ABIDES LOB)    │──new price
+     │◄──fill confirmation + new price + book update─────────────────────│
      │                  │                │                  │                  │
      │──update position─►│                │                  │                  │
+     │──log to calibration store──────────────────────────►│                  │
      │                  │                │                  │                  │
 ```
 
+Meanwhile, ABIDES-native agents (ZI, momentum, market makers) run their own decision cycles within the ABIDES event loop — no Bedrock calls, sub-ms per agent. They provide realistic market liquidity and microstructure around the LLM agents' discretionary trades.
+
 ---
 
-*Last updated: 2026-03-14*
+*Last updated: 2026-03-15*
 *Author: nVision Engineering (nClouds)*
-*Status: Draft — Pre-Phase 1*
+*Status: Draft — Pre-Phase 1 (updated with ABIDES, FinDKG, ANTR research findings)*
