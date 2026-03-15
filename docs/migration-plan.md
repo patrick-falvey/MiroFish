@@ -21,16 +21,16 @@ Migrate from a single-tenant, social-media-focused prototype (Flask/OASIS) to a 
 *Goal: Deprecate the OASIS engine and replace it with the ABIDES matching engine locally, driven by new unit tests.*
 - [x] **TDD: Test the Gym/LLM Action Translator:** Write tests ensuring mock LLM JSON intents correctly parse into ABIDES `OUCH` format messages (e.g. `SubmitOrder`, `CancelOrder`).
 - [x] **TDD: Test the LLM Coordinator Loop:** Write tests simulating an asynchronous batch of 50 agent requests and verify the array is correctly injected into `env.step()`.
-- [ ] **Implementation:** 
-    - Integrate `ABIDES-Gym` as the bridge between async LLMs and the synchronous ABIDES discrete event kernel.
-    - Update `ontology_generator.py` and ReACT extraction to output financial entities and ABIDES-compatible variables (e.g. exogenous true value).
-    - **Build Graph Query Abstraction Layer:** Create an interface that translates semantic agent intents into graph queries, isolating the logic so we can seamlessly swap Zep for Neptune in Phase 2.
+- [x] **Implementation:** 
+    - [x] Integrate `ABIDES-Gym` as the bridge between async LLMs and the synchronous ABIDES discrete event kernel.
+    - [x] Update `ontology_generator.py` and ReACT extraction to output financial entities and ABIDES-compatible variables (e.g. exogenous true value).
+    - [x] **Build Graph Query Abstraction Layer:** Create an interface that translates semantic agent intents into graph queries, isolating the logic so we can seamlessly swap Zep for Neptune in Phase 2.
     - [x] Define the **v2 Financial API Contract** for the React frontend (e.g., returning OHLCV candles instead of social posts).
-- [ ] **Validation:** Run Phase 0 contract tests to ensure the `/api/simulation/start` endpoint still behaves identically from the frontend's perspective.
+- [x] **Validation:** Run Phase 0 contract tests to ensure the `/api/simulation/start` endpoint still behaves identically from the frontend's perspective.
 
 ### Phase 2: The Real-Time SaaS Pipeline (Medium-term)
 *Goal: Move from synchronous local scripts to async distributed workers suitable for web applications.*
-- [ ] **TDD: Test Message Broadcaster:** Write tests ensuring ABIDES `ITCH` event logs are formatted correctly to a mock Redis Pub/Sub channel.
+- [x] **TDD: Test Message Broadcaster:** Write tests ensuring ABIDES `ITCH` event logs are formatted correctly to a mock Redis Pub/Sub channel.
 - [ ] **TDD: Test WebSocket Fanout:** Assert that mock price updates injected into the server are received accurately by the WebSocket client.
 - [ ] **Implementation:**
     - Isolate the ABIDES simulation loop into a dedicated background worker (e.g., AWS ECS/SQS).
