@@ -107,6 +107,37 @@ async def get_simulation(simulation_id: str):
         }
     )
 
+@router.get("/{simulation_id}/profiles/realtime", response_model=V1Response)
+async def get_simulation_profiles_realtime(simulation_id: str, platform: str = None):
+    return V1Response(
+        success=True,
+        data={
+            "profiles": [
+                {
+                    "agent_id": "agent_1",
+                    "persona_name": "Citadel",
+                    "persona_description": "Mocked Hedge Fund",
+                    "interested_topics": ["Finance"]
+                }
+            ],
+            "total_count": 1,
+            "stage": "completed"
+        }
+    )
+
+@router.get("/{simulation_id}/config/realtime", response_model=V1Response)
+async def get_simulation_config_realtime(simulation_id: str):
+    return V1Response(
+        success=True,
+        data={
+            "config_generated": True,
+            "generation_stage": "completed",
+            "config": {
+                "events": [{"timestamp": 0, "event_type": "MARKET_OPEN"}]
+            }
+        }
+    )
+
 # --- V2 Financial API Endpoints ---
 # We will implement these fully later, returning 404 for now to match the test stubs
 v2_router = APIRouter(prefix="/api/v2/simulation", tags=["Simulation V2"])
