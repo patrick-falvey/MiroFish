@@ -19,13 +19,13 @@ Migrate from a single-tenant, social-media-focused prototype (Flask/OASIS) to a 
 
 ### Phase 1: Financial Domain & ABIDES Engine Swap (Short-term)
 *Goal: Deprecate the OASIS engine and replace it with the ABIDES matching engine locally, driven by new unit tests.*
-- [ ] **TDD: Test the Gym/LLM Action Translator:** Write tests ensuring mock LLM JSON intents correctly parse into ABIDES `OUCH` format messages (e.g. `SubmitOrder`, `CancelOrder`).
-- [ ] **TDD: Test the LLM Coordinator Loop:** Write tests simulating an asynchronous batch of 50 agent requests and verify the array is correctly injected into `env.step()`.
+- [x] **TDD: Test the Gym/LLM Action Translator:** Write tests ensuring mock LLM JSON intents correctly parse into ABIDES `OUCH` format messages (e.g. `SubmitOrder`, `CancelOrder`).
+- [x] **TDD: Test the LLM Coordinator Loop:** Write tests simulating an asynchronous batch of 50 agent requests and verify the array is correctly injected into `env.step()`.
 - [ ] **Implementation:** 
     - Integrate `ABIDES-Gym` as the bridge between async LLMs and the synchronous ABIDES discrete event kernel.
     - Update `ontology_generator.py` and ReACT extraction to output financial entities and ABIDES-compatible variables (e.g. exogenous true value).
     - **Build Graph Query Abstraction Layer:** Create an interface that translates semantic agent intents into graph queries, isolating the logic so we can seamlessly swap Zep for Neptune in Phase 2.
-    - Define the **v2 Financial API Contract** for the React frontend (e.g., returning OHLCV candles instead of social posts).
+    - [x] Define the **v2 Financial API Contract** for the React frontend (e.g., returning OHLCV candles instead of social posts).
 - [ ] **Validation:** Run Phase 0 contract tests to ensure the `/api/simulation/start` endpoint still behaves identically from the frontend's perspective.
 
 ### Phase 2: The Real-Time SaaS Pipeline (Medium-term)

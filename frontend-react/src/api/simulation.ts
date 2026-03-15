@@ -24,6 +24,10 @@ import type {
   InterviewResponse,
   SimulationHistoryResponse,
   ApiResponse,
+  MarketDataResponse,
+  OrderBookResponse,
+  PortfolioResponse,
+  TradeExecutionsResponse,
 } from './types';
 
 export const createSimulation = (data: CreateSimulationRequest): Promise<CreateSimulationResponse> => {
@@ -135,4 +139,22 @@ export const interviewAgents = (data: InterviewRequest): Promise<InterviewRespon
 
 export const getSimulationHistory = (limit: number = 20): Promise<SimulationHistoryResponse> => {
   return service.get('/api/simulation/history', { params: { limit } });
+};
+
+// ─── Financial Simulation API Endpoints (v2) ─────────────────────────
+
+export const getMarketData = (simulationId: string, symbol: string): Promise<MarketDataResponse> => {
+  return service.get(`/api/v2/simulation/${simulationId}/market-data`, { params: { symbol } });
+};
+
+export const getOrderBook = (simulationId: string, symbol: string): Promise<OrderBookResponse> => {
+  return service.get(`/api/v2/simulation/${simulationId}/order-book`, { params: { symbol } });
+};
+
+export const getAgentPortfolio = (simulationId: string, agentId: string): Promise<PortfolioResponse> => {
+  return service.get(`/api/v2/simulation/${simulationId}/portfolio/${agentId}`);
+};
+
+export const getTradeExecutions = (simulationId: string, symbol: string, limit: number = 50): Promise<TradeExecutionsResponse> => {
+  return service.get(`/api/v2/simulation/${simulationId}/trades`, { params: { symbol, limit } });
 };

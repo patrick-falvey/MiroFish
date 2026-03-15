@@ -7,6 +7,21 @@ resolution-markers = [
 ]
 
 [[package]]
+name = "abides-core"
+version = "0.0.0"
+source = { git = "https://github.com/jpmorganchase/abides-jpmc-public.git?subdirectory=abides-core#f9cbe51342b7dedd9587e4e069040d68a5c6477f" }
+
+[[package]]
+name = "abides-gym"
+version = "0.0.0"
+source = { git = "https://github.com/jpmorganchase/abides-jpmc-public.git?subdirectory=abides-gym#f9cbe51342b7dedd9587e4e069040d68a5c6477f" }
+
+[[package]]
+name = "abides-markets"
+version = "0.0.0"
+source = { git = "https://github.com/jpmorganchase/abides-jpmc-public.git?subdirectory=abides-markets#f9cbe51342b7dedd9587e4e069040d68a5c6477f" }
+
+[[package]]
 name = "aiofiles"
 version = "25.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1242,6 +1257,9 @@ name = "mirofish-backend"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "abides-core" },
+    { name = "abides-gym" },
+    { name = "abides-markets" },
     { name = "camel-ai" },
     { name = "camel-oasis" },
     { name = "chardet" },
@@ -1270,6 +1288,9 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "abides-core", git = "https://github.com/jpmorganchase/abides-jpmc-public.git?subdirectory=abides-core" },
+    { name = "abides-gym", git = "https://github.com/jpmorganchase/abides-jpmc-public.git?subdirectory=abides-gym" },
+    { name = "abides-markets", git = "https://github.com/jpmorganchase/abides-jpmc-public.git?subdirectory=abides-markets" },
     { name = "camel-ai", specifier = "==0.2.78" },
     { name = "camel-oasis", specifier = "==0.2.5" },
     { name = "chardet", specifier = ">=5.0.0" },

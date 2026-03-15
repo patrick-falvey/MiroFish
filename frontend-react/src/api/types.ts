@@ -502,6 +502,79 @@ export interface ChatResponse {
   error?: string;
 }
 
+// ─── Financial Simulation API Types (v2) ──────────────────────────
+
+export interface MarketDataTick {
+  symbol: string;
+  timestamp: string; // ISO format or unix timestamp
+  price: number;
+  volume: number;
+  open?: number;
+  high?: number;
+  low?: number;
+  close?: number;
+  bid: number;
+  ask: number;
+}
+
+export interface OrderBookLevel {
+  price: number;
+  quantity: number;
+}
+
+export interface OrderBookDepth {
+  symbol: string;
+  timestamp: string;
+  bids: OrderBookLevel[];
+  asks: OrderBookLevel[];
+}
+
+export interface AgentPortfolio {
+  agent_id: string;
+  cash: number;
+  positions: Record<string, number>; // e.g., { "NVDA": 100, "TSMC": -50 }
+  total_value: number;
+  timestamp: string;
+}
+
+export interface TradeExecution {
+  trade_id: string;
+  symbol: string;
+  buyer_id: string;
+  seller_id: string;
+  price: number;
+  quantity: number;
+  timestamp: string;
+}
+
+export interface MarketDataResponse {
+  success: boolean;
+  data: {
+    ticks: MarketDataTick[];
+  };
+  error?: string;
+}
+
+export interface OrderBookResponse {
+  success: boolean;
+  data: OrderBookDepth;
+  error?: string;
+}
+
+export interface PortfolioResponse {
+  success: boolean;
+  data: AgentPortfolio;
+  error?: string;
+}
+
+export interface TradeExecutionsResponse {
+  success: boolean;
+  data: {
+    trades: TradeExecution[];
+  };
+  error?: string;
+}
+
 // ─── Generic API Response ──────────────────────────────────────────
 
 export interface ApiResponse<T = unknown> {
