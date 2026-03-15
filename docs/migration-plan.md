@@ -24,6 +24,8 @@ Migrate from a single-tenant, social-media-focused prototype (Flask/OASIS) to a 
 - [ ] **Implementation:** 
     - Integrate `ABIDES-Gym` as the bridge between async LLMs and the synchronous ABIDES discrete event kernel.
     - Update `ontology_generator.py` and ReACT extraction to output financial entities and ABIDES-compatible variables (e.g. exogenous true value).
+    - **Build Graph Query Abstraction Layer:** Create an interface that translates semantic agent intents into graph queries, isolating the logic so we can seamlessly swap Zep for Neptune in Phase 2.
+    - Define the **v2 Financial API Contract** for the React frontend (e.g., returning OHLCV candles instead of social posts).
 - [ ] **Validation:** Run Phase 0 contract tests to ensure the `/api/simulation/start` endpoint still behaves identically from the frontend's perspective.
 
 ### Phase 2: The Real-Time SaaS Pipeline (Medium-term)
@@ -33,6 +35,10 @@ Migrate from a single-tenant, social-media-focused prototype (Flask/OASIS) to a 
 - [ ] **Implementation:**
     - Isolate the ABIDES simulation loop into a dedicated background worker (e.g., AWS ECS/SQS).
     - Migrate backend from **Flask to FastAPI** to support concurrent LLM IO and native WebSockets.
+    - **Implement Live Market Data Store:** Introduce DuckDB or Redis TimeSeries to aggregate ABIDES CSV outputs into fast, queryable OHLCV data for the frontend charts.
+    - **Implement LLM Rate Limit Defenses:**
+        - Configure AWS Bedrock SDK for **Cross-Region Inference** to automatically pool regional quotas and avoid `ThrottlingException`.
+        - Build an **"Attention" Wake-Up Mechanism:** Prevent the engine from polling the LLM on every tick; only query the LLM when an agent's portfolio thresholds or tracked news events are triggered.
 - [ ] **Validation:** Run Phase 0 contract tests against the new FastAPI deployment.
 
 ### Phase 3: Multi-Tenant Cloud Data Architecture (Medium-term)
