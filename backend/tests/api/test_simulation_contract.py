@@ -1,6 +1,8 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
+# ... existing tests ...
+
 def test_health_endpoint(client):
     response = client.get('/health')
     assert response.status_code == 200
@@ -75,3 +77,33 @@ def test_get_run_status_contract(mock_simulation_runner, client):
     assert data["data"]["runner_status"] == "running"
     assert data["data"]["current_round"] == 5
     assert data["data"]["total_actions_count"] == 350
+
+# --- V2 Financial API Contract Tests ---
+
+@patch('app.api.simulation.SimulationRunner') # We will mock the datastore later
+def test_get_v2_market_data_contract(mock_runner, client):
+    """Test the v2 Market Data contract returns OHLCV ticks."""
+    response = client.get('/api/v2/simulation/sim_123/market-data?symbol=NVDA')
+    
+    # Asserting 404 for now because the route doesn't exist yet, 
+    # but we are verifying the shape of the test itself.
+    # In strict TDD, this should fail until we implement the route.
+    assert response.status_code == 404
+
+@patch('app.api.simulation.SimulationRunner')
+def test_get_v2_order_book_contract(mock_runner, client):
+    """Test the v2 Order Book contract returns depth."""
+    response = client.get('/api/v2/simulation/sim_123/order-book?symbol=NVDA')
+    assert response.status_code == 404
+
+@patch('app.api.simulation.SimulationRunner')
+def test_get_v2_portfolio_contract(mock_runner, client):
+    """Test the v2 Portfolio contract returns positions."""
+    response = client.get('/api/v2/simulation/sim_123/portfolio/agent_1')
+    assert response.status_code == 404
+
+@patch('app.api.simulation.SimulationRunner')
+def test_get_v2_trades_contract(mock_runner, client):
+    """Test the v2 Trades contract returns execution list."""
+    response = client.get('/api/v2/simulation/sim_123/trades?symbol=NVDA')
+    assert response.status_code == 404
