@@ -370,17 +370,17 @@ export function Step2EnvSetup({
 
           // phase transitions based on stage
           if (
-            (newStage === '生成Agent人设' || newStage === 'generating_profiles') &&
+            (newStage === 'Generating Agent Profiles' || newStage === 'generating_profiles') &&
             phaseRef.current < 1
           ) {
             setPhase(1);
-          } else if (newStage === '生成模拟配置' || newStage === 'generating_config') {
+          } else if (newStage === 'Generating Simulation Config' || newStage === 'generating_config') {
             if (phaseRef.current < 2) setPhase(2);
             if (!configTimerRef.current) {
               addLog('Generating dual-platform simulation config...');
               startConfigPolling();
             }
-          } else if (newStage === '准备模拟脚本' || newStage === 'copying_scripts') {
+          } else if (newStage === 'Preparing Simulation Scripts' || newStage === 'copying_scripts') {
             if (phaseRef.current < 2) setPhase(2);
           }
 
