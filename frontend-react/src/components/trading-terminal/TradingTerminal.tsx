@@ -7,8 +7,9 @@ interface TradingTerminalProps {
   symbols: string[]; // e.g. ["NVDA", "TSMC"]
 }
 
-export const TradingTerminal: React.FC<TradingTerminalProps> = ({ simulationId, symbols }) => {
-  const [activeSymbol, setActiveSymbol] = useState(symbols[0] || "UNKNOWN");
+export const TradingTerminal: React.FC<TradingTerminalProps> = ({ simulationId, symbols = [] }) => {
+  const safeSymbols = symbols.length > 0 ? symbols : ["NVDA", "TSMC"];
+  const [activeSymbol, setActiveSymbol] = useState(safeSymbols[0]);
   
   const { ticks, isLoading, isConnected } = useMarketData(simulationId, activeSymbol);
 
@@ -17,7 +18,7 @@ export const TradingTerminal: React.FC<TradingTerminalProps> = ({ simulationId, 
       {/* Terminal Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-brand-200 bg-brand-50">
         <div className="flex space-x-2">
-          {symbols.map(sym => (
+          {safeSymbols.map(sym => (
             <button
               key={sym}
               onClick={() => setActiveSymbol(sym)}
