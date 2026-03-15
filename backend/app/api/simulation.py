@@ -138,6 +138,30 @@ async def get_simulation_config_realtime(simulation_id: str):
         }
     )
 
+@router.post("/start", response_model=V1Response)
+async def start_simulation(req: Dict[str, Any]):
+    """
+    Starts the simulation engine.
+    """
+    return V1Response(
+        success=True,
+        data={
+            "message": "Simulation started"
+        }
+    )
+
+@router.post("/stop", response_model=V1Response)
+async def stop_simulation(req: Dict[str, Any]):
+    """
+    Stops the simulation engine.
+    """
+    return V1Response(
+        success=True,
+        data={
+            "message": "Simulation stopped"
+        }
+    )
+
 # --- V2 Financial API Endpoints ---
 # We will implement these fully later, returning 404 for now to match the test stubs
 v2_router = APIRouter(prefix="/api/v2/simulation", tags=["Simulation V2"])
