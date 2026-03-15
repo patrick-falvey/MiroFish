@@ -9,32 +9,28 @@ from ..utils.llm_client import LLMClient
 
 
 # System prompt for ontology generation
-ONTOLOGY_SYSTEM_PROMPT = """You are a professional knowledge graph ontology design expert. Your task is to analyze the given text content and simulation requirements, and design entity types and relationship types suitable for **social media public opinion simulation**.
+ONTOLOGY_SYSTEM_PROMPT = """You are a professional financial knowledge graph ontology design expert. Your task is to analyze the given text content and simulation requirements, and design entity types and relationship types suitable for **financial market simulation and scenario analysis**.
 
 **Important: You must output valid JSON format data. Do not output anything else.**
 
 ## Core Task Background
 
-We are building a **social media public opinion simulation system**. In this system:
-- Each entity is an "account" or "actor" that can post, interact, and spread information on social media
-- Entities influence each other, repost, comment, and respond to one another
-- We need to simulate the reactions of various parties in public opinion events and the paths of information dissemination
+We are building a **multi-agent financial market simulation platform (nVision)**. In this system:
+- Each entity represents a market participant, asset, event, or fundamental factor.
+- Actors (Hedge Funds, Retail, Central Banks) hold positions in assets, react to news, and trade against a simulated Limit Order Book.
+- We need to simulate the market microstructure, price impacts, and how macroeconomic events propagate through the financial ecosystem.
 
-Therefore, **entities must be real-world actors that can post and interact on social media**:
+Therefore, **entities must represent real-world financial actors, instruments, or macro factors**:
 
 **Acceptable**:
-- Specific individuals (public figures, parties involved, opinion leaders, experts/scholars, ordinary people)
-- Companies and enterprises (including their official accounts)
-- Organizations and institutions (universities, associations, NGOs, labor unions, etc.)
-- Government departments and regulatory agencies
-- Media organizations (newspapers, TV stations, self-media, websites)
-- Social media platforms themselves
-- Representatives of specific groups (e.g., alumni associations, fan clubs, advocacy groups, etc.)
+- Market Participants: Hedge Funds, Pension Funds, Mutual Funds, Market Makers, Retail Traders, Central Banks.
+- Assets/Equities: Specific companies, commodities, currencies, bonds.
+- Supply Chain: Suppliers, Customers, Competitors of specific assets.
+- Regulatory/Government: SEC, Federal Reserve, foreign regulators.
 
 **Not acceptable**:
-- Abstract concepts (e.g., "public opinion", "sentiment", "trends")
-- Topics/themes (e.g., "academic integrity", "education reform")
-- Viewpoints/attitudes (e.g., "supporters", "opponents")
+- Abstract social concepts (e.g., "public opinion", "social sentiment")
+- Purely social media actors with no market capital (e.g., "fan clubs", "anonymous netizens")
 
 ## Output Format
 
@@ -81,73 +77,56 @@ Please output JSON format with the following structure:
 Your 10 entity types must include the following hierarchy:
 
 A. **Fallback types (must be included, placed as the last 2 in the list)**:
-   - `Person`: Fallback type for any individual person. When a person does not belong to any other more specific person type, they are classified here.
-   - `Organization`: Fallback type for any organization or institution. When an organization does not belong to any other more specific organization type, it is classified here.
+   - `MarketActor`: Fallback type for any individual or organization that trades or influences the market. When an actor does not belong to any other more specific type (like HedgeFund), they are classified here.
+   - `Asset`: Fallback type for any tradable instrument. When an instrument does not belong to any other specific type (like Equity), it is classified here.
 
 B. **Specific types (8, designed based on the text content)**:
-   - Design more specific types for the main roles that appear in the text
-   - For example: if the text involves an academic event, you could have `Student`, `Professor`, `University`
-   - For example: if the text involves a business event, you could have `Company`, `CEO`, `Employee`
+   - Design more specific types for the main financial roles that appear in the text
+   - For example: `HedgeFund`, `RetailCohort`, `CentralBank`, `Equity`, `Commodity`, `Supplier`
 
 **Why fallback types are needed**:
-- Various people appear in the text, such as "elementary school teachers", "random passersby", "anonymous netizens"
-- If there is no specific type match, they should be classified under `Person`
-- Similarly, small organizations, temporary groups, etc. should be classified under `Organization`
-
-**Design principles for specific types**:
-- Identify frequently appearing or key role types from the text
-- Each specific type should have clear boundaries to avoid overlap
-- The description must clearly explain how this type differs from the fallback type
+- Various niche players appear in texts, such as "sovereign wealth fund" or "obscure derivatives"
+- If there is no specific type match, they should be classified under the generic fallbacks.
 
 ### 2. Relationship Type Design
 
 - Quantity: 6-10
-- Relationships should reflect real connections in social media interactions
+- Relationships should reflect real market topology and supply chain connections
 - Ensure that the source_targets of relationships cover the entity types you have defined
 
 ### 3. Attribute Design
 
 - 1-3 key attributes per entity type
 - **Note**: Attribute names cannot use `name`, `uuid`, `group_id`, `created_at`, `summary` (these are system-reserved words)
-- Recommended: `full_name`, `title`, `role`, `position`, `location`, `description`, etc.
+- Recommended: `aum_billions`, `risk_tolerance`, `ticker`, `sector`, `market_cap`, `strategy`
 
 ## Entity Type Reference
 
-**Person types (specific)**:
-- Student: Student
-- Professor: Professor/Scholar
-- Journalist: Journalist
-- Celebrity: Celebrity/Influencer
-- Executive: Executive
-- Official: Government official
-- Lawyer: Lawyer
-- Doctor: Doctor
+**Actor types (specific)**:
+- HedgeFund: Hedge Fund / Discretionary Fund
+- RetailCohort: Aggregate retail investor sentiment group
+- MarketMaker: Liquidity provider
+- CentralBank: Macro policy maker
+- InstitutionalInvestor: Mutual Fund / Pension
 
-**Person types (fallback)**:
-- Person: Any individual (used when they do not belong to the specific types above)
+**Actor types (fallback)**:
+- MarketActor: Any market participant
 
-**Organization types (specific)**:
-- University: University/College
-- Company: Company/Enterprise
-- GovernmentAgency: Government agency
-- MediaOutlet: Media organization
-- Hospital: Hospital
-- School: Primary/Secondary school
-- NGO: Non-governmental organization
+**Asset types (specific)**:
+- Equity: Publicly traded company stock
+- Commodity: Raw materials (Oil, Gold)
+- Currency: FX pair
 
-**Organization types (fallback)**:
-- Organization: Any organization (used when it does not belong to the specific types above)
+**Asset types (fallback)**:
+- Asset: Any tradable instrument
 
 ## Relationship Type Reference
 
-- WORKS_FOR: Works for
-- STUDIES_AT: Studies at
-- AFFILIATED_WITH: Affiliated with
-- REPRESENTS: Represents
-- REGULATES: Regulates
-- REPORTS_ON: Reports on
-- COMMENTS_ON: Comments on
-- RESPONDS_TO: Responds to
+- HOLDS_POSITION_IN: (HedgeFund -> Equity)
+- SUPPLIES: (Equity -> Equity)
+- COMPETES_WITH: (Equity -> Equity)
+- REGULATES: (CentralBank -> MarketActor)
+- EXPOSED_TO: (MarketActor -> Asset)
 - SUPPORTS: Supports
 - OPPOSES: Opposes
 - COLLABORATES_WITH: Collaborates with
