@@ -60,6 +60,53 @@ async def get_history(limit: int = 20):
         }
     )
 
+# --- Legacy Mock Endpoints for UI progression ---
+class PrepareSimulationRequest(BaseModel):
+    simulation_id: str
+
+@router.post("/prepare", response_model=V1Response)
+async def prepare_simulation(req: PrepareSimulationRequest):
+    return V1Response(success=True, data={"task_id": "mock_task_id"})
+
+class PrepareStatusRequest(BaseModel):
+    task_id: str
+
+@router.post("/prepare/status", response_model=V1Response)
+async def get_prepare_status(req: PrepareStatusRequest):
+    return V1Response(
+        success=True, 
+        data={
+            "status": "completed", 
+            "progress": 100,
+            "message": "Done"
+        }
+    )
+
+class EnvStatusRequest(BaseModel):
+    simulation_id: str
+
+@router.post("/env-status", response_model=V1Response)
+async def get_env_status(req: EnvStatusRequest):
+    return V1Response(
+        success=True,
+        data={
+            "twitter_status": "ready",
+            "reddit_status": "ready",
+            "profile_status": "ready"
+        }
+    )
+
+@router.get("/{simulation_id}", response_model=V1Response)
+async def get_simulation(simulation_id: str):
+    return V1Response(
+        success=True,
+        data={
+            "simulation_id": simulation_id,
+            "status": "created",
+            "project_id": "proj_123"
+        }
+    )
+
 # --- V2 Financial API Endpoints ---
 # We will implement these fully later, returning 404 for now to match the test stubs
 v2_router = APIRouter(prefix="/api/v2/simulation", tags=["Simulation V2"])
