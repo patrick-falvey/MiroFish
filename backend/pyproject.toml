@@ -9,8 +9,6 @@ authors = [
 ]
 
 dependencies = [
-    # 核心框架
-    "flask>=3.0.0",
     "flask-cors>=6.0.0",
     # LLM 相关
     "openai>=1.0.0",
@@ -39,6 +37,7 @@ dependencies = [
     "uvicorn>=0.38.0",
     "websockets>=15.0.1",
     "httpx>=0.28.1",
+    "python-multipart>=0.0.21",
 ]
 
 [project.optional-dependencies]

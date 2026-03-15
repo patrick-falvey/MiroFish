@@ -1,9 +1,10 @@
 """
-MiroFish Backend entry point
+MiroFish Backend entry point (FastAPI)
 """
 
 import os
 import sys
+import uvicorn
 
 # Fix Windows console encoding issues: set UTF-8 encoding before all imports
 if sys.platform == 'win32':
@@ -18,9 +19,7 @@ if sys.platform == 'win32':
 # Add project root directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app import create_app
 from app.config import Config
-
 
 def main():
     """Main function"""
@@ -33,17 +32,12 @@ def main():
         print("\nPlease check the configuration in the .env file")
         sys.exit(1)
     
-    # Create application
-    app = create_app()
-    
     # Get runtime configuration
-    host = os.environ.get('FLASK_HOST', '0.0.0.0')
+    host = os.environ.get('FLASK_HOST', '0.0.0.0') # Still use old env var for backward compatibility
     port = int(os.environ.get('FLASK_PORT', 5001))
-    debug = Config.DEBUG
     
     # Start server
-    app.run(host=host, port=port, debug=debug, threaded=True)
-
+    uvicorn.run("app.main:create_fastapi_app", host=host, port=port, factory=True, reload=Config.DEBUG)
 
 if __name__ == '__main__':
     main()
