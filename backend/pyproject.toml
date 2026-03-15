@@ -30,6 +30,11 @@ dependencies = [
     "abides-core",
     "abides-markets",
     "abides-gym",
+    "ray[tune]>=2.54.0",
+    "numpy<2.0.0",
+    "gymnasium>=1.2.3",
+    "gym-notices==0.1.0",
+    "gym==0.26.2",
 ]
 
 [project.optional-dependencies]
