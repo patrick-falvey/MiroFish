@@ -1,14 +1,45 @@
+version: '3.8'
+
 services:
-  mirofish:
-    image: ghcr.io/666ghj/mirofish:latest
-    # Mirror image (use if pulling from ghcr.io is slow)
-    # image: ghcr.nju.edu.cn/666ghj/mirofish:latest
-    container_name: mirofish
+  # The UI: React compiled by Vite, served by Nginx
+  frontend:
+    build:
+      context: ./frontend-react
+      dockerfile: Dockerfile
+    container_name: nvision-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  # The AI Engine: FastAPI serving LLM orchestration and ABIDES simulations
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nvision-backend
     env_file:
       - .env
+    environment:
+      # Explicitly set the host to 0.0.0.0 so it binds to the docker interface
+      - FLASK_HOST=0.0.0.0
+      - FLASK_PORT=5001
+      - REDIS_URL=redis://redis:6379/0
     ports:
-      - "3000:3000"
       - "5001:5001"
-    restart: unless-stopped
     volumes:
-      - ./backend/uploads:/app/backend/uploads
+      - ./backend/uploads:/app/uploads
+    depends_on:
+      - redis
+
+  # The Message Bus: Streams fast high-frequency ticks from ABIDES to the FastAPI WebSockets
+  redis:
+    image: redis:7-alpine
+    container_name: nvision-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:
