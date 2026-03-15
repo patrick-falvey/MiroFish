@@ -28,6 +28,11 @@ services:
     ports:
       - "5001:5001"
     volumes:
+      # Mount the source code for hot-reloading in dev
+      - ./backend/app:/app/app
+      - ./backend/scripts:/app/scripts
+      - ./backend/tests:/app/tests
+      - ./backend/run.py:/app/run.py
       - ./backend/uploads:/app/uploads
       - ~/.mirofish:/root/.mirofish
     depends_on:
