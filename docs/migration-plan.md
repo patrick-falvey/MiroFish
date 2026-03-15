@@ -32,14 +32,14 @@ Migrate from a single-tenant, social-media-focused prototype (Flask/OASIS) to a 
 *Goal: Move from synchronous local scripts to async distributed workers suitable for web applications.*
 - [x] **TDD: Test Message Broadcaster:** Write tests ensuring ABIDES `ITCH` event logs are formatted correctly to a mock Redis Pub/Sub channel.
 - [x] **TDD: Test WebSocket Fanout:** Assert that mock price updates injected into the server are received accurately by the WebSocket client.
-- [ ] **Implementation:**
-    - Isolate the ABIDES simulation loop into a dedicated background worker (e.g., AWS ECS/SQS).
-    - Migrate backend from **Flask to FastAPI** to support concurrent LLM IO and native WebSockets.
-    - **Implement Live Market Data Store:** Introduce DuckDB or Redis TimeSeries to aggregate ABIDES CSV outputs into fast, queryable OHLCV data for the frontend charts.
-    - **Implement LLM Rate Limit Defenses:**
-        - Configure AWS Bedrock SDK for **Cross-Region Inference** to automatically pool regional quotas and avoid `ThrottlingException`.
-        - Build an **"Attention" Wake-Up Mechanism:** Prevent the engine from polling the LLM on every tick; only query the LLM when an agent's portfolio thresholds or tracked news events are triggered.
-- [ ] **Validation:** Run Phase 0 contract tests against the new FastAPI deployment.
+- [x] **Implementation:**
+    - [x] Isolate the ABIDES simulation loop into a dedicated background worker (e.g., AWS ECS/SQS).
+    - [x] Migrate backend from **Flask to FastAPI** to support concurrent LLM IO and native WebSockets.
+    - [x] **Implement Live Market Data Store:** Introduce DuckDB or Redis TimeSeries to aggregate ABIDES CSV outputs into fast, queryable OHLCV data for the frontend charts.
+    - [x] **Implement LLM Rate Limit Defenses:**
+        - [x] Configure AWS Bedrock SDK for **Cross-Region Inference** to automatically pool regional quotas and avoid `ThrottlingException`.
+        - [x] Build an **"Attention" Wake-Up Mechanism:** Prevent the engine from polling the LLM on every tick; only query the LLM when an agent's portfolio thresholds or tracked news events are triggered.
+- [x] **Validation:** Run Phase 0 contract tests against the new FastAPI deployment.
 
 ### Phase 3: Multi-Tenant Cloud Data Architecture (Medium-term)
 *Goal: Securely partition data and scale the graph database.*
