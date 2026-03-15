@@ -52,9 +52,26 @@ async def get_run_status(simulation_id: str):
 # We will implement these fully later, returning 404 for now to match the test stubs
 v2_router = APIRouter(prefix="/api/v2/simulation", tags=["Simulation V2"])
 
+from app.services.data.market_store import MarketDataStore
+
+# We instantiate a global store for now. In a full production setup with workers, 
+# this might point to a local file path like './market_data.duckdb' shared with the worker.
+market_store = MarketDataStore()
+
 @v2_router.get("/{simulation_id}/market-data")
 async def get_market_data(simulation_id: str, symbol: str):
-    raise HTTPException(status_code=404, detail="Not implemented yet")
+    """
+    Fetches the historical OHLCV chart ticks for a specific asset in a simulation.
+    Used by the React frontend to draw Lightweight Charts on initial page load or refresh.
+    """
+    ticks = market_store.get_market_data(simulation_id, symbol)
+    
+    return {
+        "success": True,
+        "data": {
+            "ticks": ticks
+        }
+    }
 
 @v2_router.get("/{simulation_id}/order-book")
 async def get_order_book(simulation_id: str, symbol: str):

@@ -37,10 +37,14 @@ def test_get_run_status_contract(client):
 
 def test_get_v2_market_data_contract(client):
     """Test the v2 Market Data contract returns OHLCV ticks."""
+    # We test it against an empty simulation, it should return success=True and empty ticks
     response = client.get('/api/v2/simulation/sim_123/market-data?symbol=NVDA')
     
-    # Asserting 404 for now because the route is a stub, 
-    assert response.status_code == 404
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert "ticks" in data["data"]
+    assert isinstance(data["data"]["ticks"], list)
 
 def test_get_v2_order_book_contract(client):
     """Test the v2 Order Book contract returns depth."""
