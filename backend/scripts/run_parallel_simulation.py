@@ -996,10 +996,20 @@ def create_model(config: Dict[str, Any], use_boost: bool = False):
         use_boost: 是否使用加速 LLM 配置（如果可用）
     """
     # 检查是否有加速配置
-    boost_api_key = os.environ.get("LLM_BOOST_API_KEY", "")
-    boost_base_url = os.environ.get("LLM_BOOST_BASE_URL", "")
-    boost_model = os.environ.get("LLM_BOOST_MODEL_NAME", "")
-    has_boost_config = bool(boost_api_key)
+    boost_api_key = os.environ.get("LLM_BOOST_API_KEY", "").strip()
+    boost_base_url = os.environ.get("LLM_BOOST_BASE_URL", "").strip()
+    boost_model = os.environ.get("LLM_BOOST_MODEL_NAME", "").strip()
+
+    # .env 示例里常见占位值（不应被当成真实配置）
+    placeholder_values = {"", "your_api_key_here", "your_base_url_here", "your_model_name_here"}
+
+    # 清理占位值，避免误触发加速 LLM 分支
+    if boost_base_url in placeholder_values:
+        boost_base_url = ""
+    if boost_model in placeholder_values:
+        boost_model = ""
+
+    has_boost_config = boost_api_key not in placeholder_values
     
     # 根据参数和配置情况选择使用哪个 LLM
     if use_boost and has_boost_config:
@@ -1009,23 +1019,30 @@ def create_model(config: Dict[str, Any], use_boost: bool = False):
         llm_model = boost_model or os.environ.get("LLM_MODEL_NAME", "")
         config_label = "[加速LLM]"
     else:
-        # 使用通用配置
-        llm_api_key = os.environ.get("LLM_API_KEY", "")
-        llm_base_url = os.environ.get("LLM_BASE_URL", "")
+        # 使用通用配置 — support Codex OAuth auth mode
+        if os.environ.get("LLM_AUTH_MODE") == "codex":
+            from backend.app.utils.codex_auth import get_credentials, CODEX_BASE_URL
+            creds = get_credentials()
+            llm_api_key = creds["access_token"]
+            llm_base_url = CODEX_BASE_URL
+            config_label = "[Codex OAuth]"
+        else:
+            llm_api_key = os.environ.get("LLM_API_KEY", "")
+            llm_base_url = os.environ.get("LLM_BASE_URL", "")
+            config_label = "[通用LLM]"
         llm_model = os.environ.get("LLM_MODEL_NAME", "")
-        config_label = "[通用LLM]"
-    
+
     # 如果 .env 中没有模型名，则使用 config 作为备用
     if not llm_model:
         llm_model = config.get("llm_model", "gpt-4o-mini")
-    
+
     # 设置 camel-ai 所需的环境变量
     if llm_api_key:
         os.environ["OPENAI_API_KEY"] = llm_api_key
-    
+
     if not os.environ.get("OPENAI_API_KEY"):
-        raise ValueError("缺少 API Key 配置，请在项目根目录 .env 文件中设置 LLM_API_KEY")
-    
+        raise ValueError("缺少 API Key 配置，请在项目根目录 .env 文件中设置 LLM_API_KEY 或使用 LLM_AUTH_MODE=codex")
+
     if llm_base_url:
         os.environ["OPENAI_API_BASE_URL"] = llm_base_url
     

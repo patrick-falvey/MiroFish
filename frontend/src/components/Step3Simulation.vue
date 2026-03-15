@@ -319,23 +319,26 @@ const isStarting = ref(false)
 const isStopping = ref(false)
 const startError = ref(null)
 const runStatus = ref({})
-const allActions = ref([]) // 所有动作（增量累积）
+const allActions = ref([]) // 所有动作（增量累积，capped at 500）
 const actionIds = ref(new Set()) // 用于去重的动作ID集合
+const actionOffset = ref(0) // Track offset for incremental fetching
+const visibleCount = ref(50) // Number of actions to render
+const MAX_ACTIONS_IN_MEMORY = 500
 const scrollContainer = ref(null)
 
 // Computed
-// 按时间顺序显示动作（最新的在最后面，即底部）
+// 按时间顺序显示动作（最新的在最后面，即底部）— only render visible slice
 const chronologicalActions = computed(() => {
-  return allActions.value
+  return allActions.value.slice(-visibleCount.value)
 })
 
-// 各平台动作计数
+// Use counts from run status instead of filtering the entire array
 const twitterActionsCount = computed(() => {
-  return allActions.value.filter(a => a.platform === 'twitter').length
+  return runStatus.value.twitter_actions_count || 0
 })
 
 const redditActionsCount = computed(() => {
-  return allActions.value.filter(a => a.platform === 'reddit').length
+  return runStatus.value.reddit_actions_count || 0
 })
 
 // 格式化模拟流逝时间（根据轮次和每轮分钟数计算）
@@ -556,32 +559,34 @@ const checkPlatformsCompleted = (data) => {
 
 const fetchRunStatusDetail = async () => {
   if (!props.simulationId) return
-  
+
   try {
-    const res = await getRunStatusDetail(props.simulationId)
-    
+    const res = await getRunStatusDetail(props.simulationId, actionOffset.value)
+
     if (res.success && res.data) {
-      // 使用 all_actions 获取完整的动作列表
       const serverActions = res.data.all_actions || []
-      
+      const totalCount = res.data.total_actions_count ?? 0
+
       // 增量添加新动作（去重）
-      let newActionsAdded = 0
       serverActions.forEach(action => {
-        // 生成唯一ID
         const actionId = action.id || `${action.timestamp}-${action.platform}-${action.agent_id}-${action.action_type}`
-        
+
         if (!actionIds.value.has(actionId)) {
           actionIds.value.add(actionId)
           allActions.value.push({
             ...action,
             _uniqueId: actionId
           })
-          newActionsAdded++
         }
       })
-      
-      // 不自动滚动，让用户自由查看时间轴
-      // 新动作会在底部追加
+
+      // Update offset so next poll only fetches new actions
+      actionOffset.value = totalCount
+
+      // Sliding window: cap memory usage
+      if (allActions.value.length > MAX_ACTIONS_IN_MEMORY) {
+        allActions.value = allActions.value.slice(-MAX_ACTIONS_IN_MEMORY)
+      }
     }
   } catch (err) {
     console.warn('获取详细状态失败:', err)

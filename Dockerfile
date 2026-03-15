@@ -12,12 +12,12 @@ WORKDIR /app
 
 # 先复制依赖描述文件以利用缓存
 COPY package.json package-lock.json ./
-COPY frontend/package.json frontend/package-lock.json ./frontend/
+COPY frontend-react/package.json frontend-react/package-lock.json ./frontend-react/
 COPY backend/pyproject.toml backend/uv.lock ./backend/
 
 # 安装依赖（Node + Python）
 RUN npm ci \
-  && npm ci --prefix frontend \
+  && npm ci --prefix frontend-react \
   && cd backend && uv sync --frozen
 
 # 复制项目源码

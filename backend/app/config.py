@@ -28,6 +28,9 @@ class Config:
     JSON_AS_ASCII = False
     
     # LLM配置（统一使用OpenAI格式）
+    # LLM_AUTH_MODE: "api_key" (default) uses LLM_API_KEY directly,
+    #                "codex" uses OAuth token from ~/.mirofish/codex_auth.json
+    LLM_AUTH_MODE = os.environ.get('LLM_AUTH_MODE', 'api_key')
     LLM_API_KEY = os.environ.get('LLM_API_KEY')
     LLM_BASE_URL = os.environ.get('LLM_BASE_URL', 'https://api.openai.com/v1')
     LLM_MODEL_NAME = os.environ.get('LLM_MODEL_NAME', 'gpt-4o-mini')
@@ -64,11 +67,22 @@ class Config:
     REPORT_AGENT_TEMPERATURE = float(os.environ.get('REPORT_AGENT_TEMPERATURE', '0.5'))
     
     @classmethod
+    def get_llm_api_key(cls) -> str:
+        """Resolve LLM API key for api_key mode. Not used in codex mode."""
+        if not cls.LLM_API_KEY:
+            raise ValueError("LLM_API_KEY 未配置")
+        return cls.LLM_API_KEY
+
+    @classmethod
     def validate(cls):
         """验证必要配置"""
         errors = []
-        if not cls.LLM_API_KEY:
+        if cls.LLM_AUTH_MODE == 'api_key' and not cls.LLM_API_KEY:
             errors.append("LLM_API_KEY 未配置")
+        if cls.LLM_AUTH_MODE == 'codex':
+            from .utils.codex_auth import is_logged_in
+            if not is_logged_in():
+                errors.append("Codex auth not found. Run: python -m backend.scripts.codex_login")
         if not cls.ZEP_API_KEY:
             errors.append("ZEP_API_KEY 未配置")
         return errors

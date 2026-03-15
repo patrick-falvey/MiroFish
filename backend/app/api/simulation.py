@@ -1795,7 +1795,9 @@ def get_run_status_detail(simulation_id: str):
     try:
         run_state = SimulationRunner.get_run_state(simulation_id)
         platform_filter = request.args.get('platform')
-        
+        # Pagination: skip actions the frontend already has
+        offset = request.args.get('offset', 0, type=int)
+
         if not run_state:
             return jsonify({
                 "success": True,
@@ -1803,45 +1805,26 @@ def get_run_status_detail(simulation_id: str):
                     "simulation_id": simulation_id,
                     "runner_status": "idle",
                     "all_actions": [],
-                    "twitter_actions": [],
-                    "reddit_actions": []
+                    "total_actions_count": 0,
                 }
             })
-        
-        # 获取完整的动作列表
+
+        # Get all actions once, then slice for pagination
         all_actions = SimulationRunner.get_all_actions(
             simulation_id=simulation_id,
             platform=platform_filter
         )
-        
-        # 分平台获取动作
-        twitter_actions = SimulationRunner.get_all_actions(
-            simulation_id=simulation_id,
-            platform="twitter"
-        ) if not platform_filter or platform_filter == "twitter" else []
-        
-        reddit_actions = SimulationRunner.get_all_actions(
-            simulation_id=simulation_id,
-            platform="reddit"
-        ) if not platform_filter or platform_filter == "reddit" else []
-        
-        # 获取当前轮次的动作（recent_actions 只展示最新一轮）
-        current_round = run_state.current_round
-        recent_actions = SimulationRunner.get_all_actions(
-            simulation_id=simulation_id,
-            platform=platform_filter,
-            round_num=current_round
-        ) if current_round > 0 else []
-        
-        # 获取基础状态信息
+        total_count = len(all_actions)
+
+        # Only return actions the frontend hasn't seen yet
+        new_actions = all_actions[offset:] if offset < total_count else []
+
+        # Build response
         result = run_state.to_dict()
-        result["all_actions"] = [a.to_dict() for a in all_actions]
-        result["twitter_actions"] = [a.to_dict() for a in twitter_actions]
-        result["reddit_actions"] = [a.to_dict() for a in reddit_actions]
+        result["all_actions"] = [a.to_dict() for a in new_actions]
+        result["total_actions_count"] = total_count
         result["rounds_count"] = len(run_state.rounds)
-        # recent_actions 只展示当前最新一轮两个平台的内容
-        result["recent_actions"] = [a.to_dict() for a in recent_actions]
-        
+
         return jsonify({
             "success": True,
             "data": result
