@@ -26,15 +26,16 @@ FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copy a custom nginx config to handle React Router push-state routing
-# (We create this file inline using a RUN command to avoid needing an extra file in the repo)
-RUN echo 'server {\n\
-    listen 80;\n\
-    location / {\n\
-        root /usr/share/nginx/html;\n\
-        index index.html index.htm;\n\
-        try_files $uri $uri/ /index.html;\n\
-    }\n\
-}' > /etc/nginx/conf.d/default.conf
+RUN cat <<EOF > /etc/nginx/conf.d/default.conf
+server {
+    listen 80;
+    location / {
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+        try_files \$uri \$uri/ /index.html;
+    }
+}
+EOF
 
 # Expose the HTTP port
 EXPOSE 80

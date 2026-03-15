@@ -29,6 +29,7 @@ services:
       - "5001:5001"
     volumes:
       - ./backend/uploads:/app/uploads
+      - ~/.mirofish:/root/.mirofish
     depends_on:
       - redis
 
